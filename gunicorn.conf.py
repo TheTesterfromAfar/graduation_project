@@ -20,3 +20,6 @@ max_requests_jitter = 100
 accesslog = "-"
 errorlog = "-"
 loglevel = os.environ.get("LOG_LEVEL", "info").lower()
+
+# Add this line to your gunicorn.conf.py
+control_socket_disable = True
