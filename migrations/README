@@ -1,0 +1,5 @@
+Single-database configuration for Flask-Migrate.
+
+    flask db upgrade                 apply all migrations (fresh database)
+    flask db migrate -m "message"    generate a migration after editing app/models.py
+    flask db stamp 0001_initial_schema   adopt a database created by the old prototype

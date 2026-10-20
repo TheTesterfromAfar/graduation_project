@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, score_meter %}
+{% block title %}Хариулт #{{ record.id }} — {{ site_name }}{% endblock %}
+{% block container_class %} container--form{% endblock %}
+{% block content %}
+<header class="page-header page-header--row">
+  <div>
+    <a class="back-link" href="{{ url_for('admin.responses', survey_type=survey_type) }}">{{ icon("arrow-left") }}<span>Жагсаалт руу буцах</span></a>
+    <h1 class="page-title">{{ spec.short_title }} — хариулт #{{ record.id }}</h1>
+    <p class="muted">Илгээсэн: {{ record.timestamp|localtime }}{% if average is not none %} · Дундаж оноо: <strong>{{ average }}</strong> / 5{% endif %}</p>
+  </div>
+  {% if current_user.is_admin %}
+  <form method="post" action="{{ url_for('admin.response_delete', survey_type=survey_type, response_id=record.id) }}" data-confirm="Энэ хариултыг бүрмөсөн устгахдаа итгэлтэй байна уу? Үүнийг буцаах боломжгүй.">
+    {{ csrf() }}
+    <button type="submit" class="btn btn--danger">{{ icon("trash") }}<span>Устгах</span></button>
+  </form>
+  {% endif %}
+</header>
+
+<section class="card">
+  <h2 class="card__title">Ерөнхий мэдээлэл</h2>
+  <dl class="details">
+    {% for col, label in spec.leading_fields %}
+    <div class="details__row"><dt>{{ label }}</dt><dd>{{ (record|attr(col)) if (record|attr(col)) is not none and (record|attr(col)) != '' else '—' }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+
+{% for group in spec.rating_groups %}
+<section class="card">
+  <h2 class="card__title">{{ group.title }}</h2>
+  <ul class="meter-list">
+    {% for question in group.questions %}
+    {% set value = record|attr(question.field) %}
+    <li class="meter-row meter-row--wide">
+      <span class="meter-row__label">{{ question.label }}</span>
+      {{ score_meter(value if value else none) }}
+      <span class="meter-row__value">{{ value if value else '—' }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+
+<section class="card">
+  <h2 class="card__title">Бусад хариулт</h2>
+  <dl class="details">
+    {% for col, label in spec.trailing_fields %}
+    <div class="details__row"><dt>{{ label }}</dt><dd class="prewrap">{{ (record|attr(col)) if (record|attr(col)) is not none and (record|attr(col)) != '' else '—' }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+{% endblock %}

@@ -1,0 +1,196 @@
+# Survey System (Судалгааны систем)
+
+Flask application for collecting employer and intern-student satisfaction surveys, with a secured
+admin area for reviewing, filtering and exporting the results.
+
+## What's inside
+
+| Area | Implementation |
+|---|---|
+| **Architecture** | Application factory (`app/__init__.py`), blueprints (`main`, `surveys`, `auth`, `admin`), config classes driven by environment variables, services layer for queries/stats/export |
+| **Validation** | Flask-WTF/WTForms with Mongolian messages; whitelisted choices, 1–5 ratings, length/format checks, honeypot field |
+| **Database** | Flask-SQLAlchemy + Flask-Migrate (Alembic). Survey tables are unchanged from the prototype |
+| **Security** | CSRF on every POST, scrypt password hashing, roles (`admin` / `analyst`), session hardening, login rate limiting, strict CSP + security headers, open-redirect protection, spreadsheet-formula-injection protection in exports |
+| **Admin** | Dashboard (totals, 7/30-day counts, average scores, answer distributions, 14-day timeline), searchable/filterable/sortable/paginated lists, response detail, CSV + Excel export that honours the active filters |
+| **UI** | Dependency-free responsive CSS, mobile nav, big tap-target rating scale, live progress bar, loading spinners, dismissible alert banners, inline field errors, error pages |
+| **Production** | `.env` configuration, Gunicorn config, Dockerfile + compose file, `/healthz` endpoint |
+
+## Project layout
+
+```
+wsgi.py                  entry point (gunicorn wsgi:app)
+app/
+  __init__.py            create_app(): config, extensions, blueprints, error pages
+  config.py              Development / Production / Testing configuration
+  extensions.py          db, migrate, csrf, login, limiter, oauth
+  models.py              User, EmployerSurvey, StudentSurvey, AdminDataEntry
+  questions.py           survey definitions -> single source for forms, detail pages, exports
+  forms.py               WTForms (survey forms are generated from questions.py)
+  security.py            redirect + password-policy helpers
+  blueprints/            main.py, surveys.py, auth.py, admin.py
+  services/              queries.py (search/filter), stats.py (dashboard), export.py (CSV/XLSX)
+  templates/ static/     UI
+migrations/              Alembic environment + versions/
+tests/                   pytest suite
+Dockerfile, docker-compose.yml, gunicorn.conf.py, docker-entrypoint.sh
+```
+
+## Run locally
+
+```bash
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+cp .env.example .env                                   # Windows: copy .env.example .env
+#   APP_ENV=development works without a SECRET_KEY; production requires one.
+
+flask --app wsgi db upgrade                            # creates instance/surveys.db
+flask --app wsgi create-user you@example.com --role admin     # prompts for a password (min. 12 chars)
+flask --app wsgi run --debug                           # http://127.0.0.1:5000
+```
+
+### Keep the data from the old prototype
+
+The old `instance/surveys.db` already has the three original tables, so tell Alembic they exist
+instead of re-creating them, then apply the new migration (adds `users` + indexes):
+
+```bash
+cp instance/surveys.db instance/surveys.db.bak
+flask --app wsgi db stamp 0001_initial_schema
+flask --app wsgi db upgrade
+```
+
+## Users and roles
+
+| Role | Can do |
+|---|---|
+| `admin` | Everything: dashboard, lists, export, **delete responses**, **manage JSON data** |
+| `analyst` | Read-only: dashboard, search/filter, detail, export |
+
+```bash
+flask --app wsgi create-user analyst@example.com --role analyst --name "Dulmaa"
+flask --app wsgi set-password someone@example.com
+flask --app wsgi deactivate-user someone@example.com
+flask --app wsgi list-users
+```
+
+**Google sign-in (optional).** Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and add
+`https://YOUR-DOMAIN/auth/google/callback` as an authorised redirect URI. Addresses listed in
+`ADMIN_EMAILS` get an admin account on first sign-in; anyone else must already have an active
+account. Only Google accounts with a *verified* email are accepted. The login page shows the Google
+button only when credentials are configured.
+
+## Configuration (`.env`)
+
+See `.env.example` for every variable. The important ones:
+
+| Variable | Purpose |
+|---|---|
+| `APP_ENV` | `development`, `production` (default), `testing` |
+| `SECRET_KEY` | **Required in production**, ≥ 32 chars; the app refuses to start without it |
+| `DATABASE_URL` | Default SQLite in `instance/`. PostgreSQL: `postgresql://…` + `pip install "psycopg[binary]"` |
+| `SESSION_COOKIE_SECURE` | Keep `true` behind HTTPS. Only set `false` to test over `http://localhost` |
+| `TRUSTED_PROXY_COUNT` | `1` behind nginx so client IPs, https and the Google redirect URI are right |
+| `RATELIMIT_STORAGE_URI` | `memory://` is per-process; use Redis (`redis://…`, `pip install redis`) with several workers |
+| `SURVEY_RATE_LIMIT` | Submissions per IP. A school lab shares one IP, so keep it generous |
+| `APP_TIMEZONE` | Display/export timezone (data is stored in UTC) |
+
+## Changing the surveys
+
+`app/questions.py` drives the form, validation, admin detail page, dashboard and exports.
+
+* **Add a rating question:** append a `Question(field, label, short)` to a group. The `field` must be
+  a column on the model (e.g. the unused `soft_1…7`, `tech_1…5`, `quality_1…2` columns on
+  `StudentSurvey`), otherwise add the column to `app/models.py` and run
+  `flask --app wsgi db migrate -m "add question"` then `flask --app wsgi db upgrade`.
+* **Change answer choices:** edit the tuples at the top of the file. Old responses keep their stored text.
+
+## Tests
+
+```bash
+pytest
+```
+
+Covers validation, CSRF, login/RBAC, open-redirect protection, search/filter/pagination, exports
+(including formula-injection), JSON-data management, and that the migrations build exactly the schema
+the models describe.
+
+## Deployment
+
+### Docker (simplest)
+
+```bash
+cp .env.example .env        # set APP_ENV=production, SECRET_KEY, TRUSTED_PROXY_COUNT=1, ...
+docker compose up -d --build
+docker compose exec web flask create-user you@example.com --role admin
+```
+
+The container applies migrations on start, runs Gunicorn as a non-root user, and exposes a health
+check at `/healthz`. The SQLite file lives in the `survey_data` volume.
+
+### Without Docker
+
+```bash
+pip install -r requirements.txt
+export APP_ENV=production SECRET_KEY=... 
+flask --app wsgi db upgrade
+gunicorn -c gunicorn.conf.py wsgi:app
+```
+
+Example systemd unit (`/etc/systemd/system/survey.service`):
+
+```ini
+[Unit]
+Description=Survey system
+After=network.target
+
+[Service]
+User=survey
+WorkingDirectory=/srv/survey
+EnvironmentFile=/srv/survey/.env
+ExecStart=/srv/survey/.venv/bin/gunicorn -c gunicorn.conf.py wsgi:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### nginx in front (TLS)
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name survey.example.mn;
+    # ssl_certificate / ssl_certificate_key ...
+    client_max_body_size 2m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Set `TRUSTED_PROXY_COUNT=1`. Static files are served by Gunicorn, which is fine at this scale.
+
+### Operations checklist
+
+* **Backups:** the database holds respondents' names, phones and emails. SQLite runs in WAL mode, so
+  don't just copy the file while the app is running; use
+  `sqlite3 instance/surveys.db ".backup /backups/surveys-$(date +%F).db"`.
+* **Schema changes:** edit `models.py` → `flask db migrate -m "..."` → review the generated file → `flask db upgrade`.
+* **Lock dependencies:** after a successful install run `pip freeze > requirements.lock` and build from it.
+* **Multiple replicas:** run migrations once (`RUN_MIGRATIONS=0` on all but one) and use Redis for rate limits.
+
+## Security notes
+
+* All POST routes are CSRF-protected (logout and delete are POST-only). Sessions are cookie-based:
+  `HttpOnly`, `SameSite=Lax`, `Secure` in production, 2-hour lifetime, cleared and re-issued on login.
+* Passwords use Werkzeug's salted scrypt; the login form returns one generic error for unknown email,
+  wrong password and disabled account, and burns equal time for unknown emails.
+* CSP is `default-src 'self'` with no inline scripts/styles - keep it that way (use `static/js/app.js`).
+* Not included (reasonable next steps): account lockout / 2FA for admins, an audit-log table
+  (actions are currently written to the application log), and a privacy/consent notice on the
+  survey pages, which you should add if respondents' contact details are collected.

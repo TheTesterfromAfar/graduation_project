@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, render_pagination, score_meter %}
+{% block title %}{{ spec.short_title }} — хариултууд — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+{% block content %}
+<header class="page-header page-header--row">
+  <div>
+    <a class="back-link" href="{{ url_for('admin.dashboard') }}">{{ icon("arrow-left") }}<span>Самбар руу буцах</span></a>
+    <h1 class="page-title">{{ spec.short_title }} — хариултууд</h1>
+    <p class="muted">{% if has_filters %}Шүүлтүүрт таарсан: {% else %}Нийт: {% endif %}<strong>{{ pagination.total }}</strong> хариулт</p>
+  </div>
+  <div class="cluster">
+    <a class="btn btn--secondary" href="{{ url_for('admin.export_responses', survey_type=survey_type, fmt='xlsx', **filters) }}">{{ icon("download") }}<span>Excel</span></a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.export_responses', survey_type=survey_type, fmt='csv', **filters) }}">{{ icon("download") }}<span>CSV</span></a>
+  </div>
+</header>
+{% if has_filters %}<p class="hint-banner">Экспорт нь одоогийн хайлт, шүүлтүүрт таарсан хариултуудыг агуулна.</p>{% endif %}
+
+<form method="get" class="card filters" action="{{ url_for('admin.responses', survey_type=survey_type) }}">
+  <div class="filters__grid">
+    <div class="field filters__search">
+      <label for="q" class="field__label">Хайх</label>
+      <input type="search" id="q" name="q" class="input" value="{{ filters.get('q', '') }}" maxlength="100" placeholder="Нэр, байгууллага, мэргэжил...">
+    </div>
+    {% for option in spec.filters %}
+    <div class="field">
+      <label for="f-{{ option.name }}" class="field__label">{{ option.label }}</label>
+      <select id="f-{{ option.name }}" name="{{ option.name }}" class="input">
+        <option value="">Бүгд</option>
+        {% for choice in option.choices %}
+          <option value="{{ choice }}"{% if filters.get(option.name) == choice %} selected{% endif %}>{{ choice }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endfor %}
+    <div class="field">
+      <label for="date_from" class="field__label">Эхлэх огноо</label>
+      <input type="date" id="date_from" name="date_from" class="input" value="{{ filters.get('date_from', '') }}">
+    </div>
+    <div class="field">
+      <label for="date_to" class="field__label">Дуусах огноо</label>
+      <input type="date" id="date_to" name="date_to" class="input" value="{{ filters.get('date_to', '') }}">
+    </div>
+    <div class="field">
+      <label for="sort" class="field__label">Эрэмбэлэх</label>
+      <select id="sort" name="sort" class="input">
+        <option value="newest"{% if 'sort' not in filters %} selected{% endif %}>Шинэ нь эхэндээ</option>
+        <option value="oldest"{% if filters.get('sort') == 'oldest' %} selected{% endif %}>Хуучин нь эхэндээ</option>
+        <option value="name"{% if filters.get('sort') == 'name' %} selected{% endif %}>Нэрээр (А → Я)</option>
+      </select>
+    </div>
+  </div>
+  <div class="cluster">
+    <button type="submit" class="btn btn--primary">{{ icon("search") }}<span>Хайх</span></button>
+    {% if has_filters or 'sort' in filters %}<a class="btn btn--ghost" href="{{ url_for('admin.responses', survey_type=survey_type) }}">Цэвэрлэх</a>{% endif %}
+  </div>
+</form>
+
+<section class="card card--flush">
+  {% if pagination.items %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          {% for col, label in spec.list_columns %}<th scope="col">{{ label }}</th>{% endfor %}
+          <th scope="col">Дундаж</th>
+          <th scope="col"><span class="sr-only">Үйлдэл</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in pagination.items %}
+        <tr>
+          {% for col, label in spec.list_columns %}
+            <td data-label="{{ label }}">{% if col == 'timestamp' %}{{ row.timestamp|localtime }}{% else %}{{ (row|attr(col)) or '—' }}{% endif %}</td>
+          {% endfor %}
+          <td data-label="Дундаж" class="table__score">{{ averages[row.id] if averages[row.id] is not none else '—' }}</td>
+          <td class="table__actions">
+            <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.response_detail', survey_type=survey_type, response_id=row.id) }}">{{ icon("eye") }}<span>Дэлгэрэнгүй</span></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-footer">
+    <span class="muted">Хуудас {{ pagination.page }} / {{ pagination.pages }}</span>
+    {{ render_pagination(pagination, 'admin.responses', dict(filters, survey_type=survey_type)) }}
+  </div>
+  {% else %}
+    <p class="empty">{% if has_filters %}Шүүлтүүрт тохирох хариулт олдсонгүй.{% else %}Одоогоор бөглөсөн хариулт байхгүй байна.{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

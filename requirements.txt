@@ -1,0 +1,23 @@
+# Runtime dependencies.
+# Ranges keep each library on a known major version. After a successful install run
+#     pip freeze > requirements.lock
+# and build production images from the lock file for fully reproducible deploys.
+Flask>=3.0.2,<4.0
+Flask-SQLAlchemy>=3.1.1,<4.0
+Flask-Migrate>=4.0.7,<5.0
+Flask-WTF>=1.2.1,<2.0
+Flask-Login>=0.6.3,<0.7
+Flask-Limiter>=3.5,<5.0
+WTForms>=3.1.2,<4.0
+email-validator>=2.1,<3.0
+Authlib>=1.3,<2.0
+requests>=2.31,<3.0
+openpyxl>=3.1.2,<4.0
+python-dotenv>=1.0,<2.0
+tzdata>=2024.1
+gunicorn>=22.0
+
+# Optional - PostgreSQL driver (then set DATABASE_URL=postgresql://user:pass@host/db)
+# psycopg[binary]>=3.1
+# Optional - shared rate-limit storage when running several workers/containers
+# redis>=5.0

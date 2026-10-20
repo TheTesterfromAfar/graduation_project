@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ title }} — {{ site_name }}{% endblock %}
+{% block container_class %} container--narrow{% endblock %}
+{% block content %}
+<section class="card error-page">
+  <p class="error-page__code">{{ code }}</p>
+  <h1 class="error-page__title">{{ title }}</h1>
+  <p class="muted">{{ message }}</p>
+  <div class="cluster cluster--center">
+    <a class="btn btn--primary" href="{{ url_for('main.index') }}">{{ icon("arrow-left") }}<span>Нүүр хуудас руу буцах</span></a>
+  </div>
+</section>
+{% endblock %}

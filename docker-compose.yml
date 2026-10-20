@@ -1,0 +1,20 @@
+# Quick start:  cp .env.example .env  (set SECRET_KEY)  ->  docker compose up --build
+# Then create the first admin:
+#   docker compose exec web flask create-user you@example.com --role admin
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      APP_ENV: production
+      # Uncomment ONLY to test over plain http://localhost (Secure cookies are not sent over http):
+      # SESSION_COOKIE_SECURE: "false"
+    volumes:
+      # SQLite database lives here - back this volume up.
+      - survey_data:/app/instance
+    restart: unless-stopped
+
+volumes:
+  survey_data:

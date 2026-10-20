@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field %}
+{% block title %}Нэвтрэх — {{ site_name }}{% endblock %}
+{% block container_class %} container--narrow{% endblock %}
+{% block content %}
+<section class="card auth-card">
+  <div class="auth-card__head">
+    <span class="survey-card__icon">{{ icon("lock") }}</span>
+    <h1 class="page-title">Админ нэвтрэх</h1>
+    <p class="muted">Системийн удирдлагын хэсэгт хандахын тулд эрх бүхий хаягаар нэвтэрнэ үү.</p>
+  </div>
+
+  <form method="post" class="stack">
+    {{ form.hidden_tag() }}
+    {{ field(form.email, autocomplete="username", autofocus=true) }}
+    {{ field(form.password, autocomplete="current-password") }}
+    <button type="submit" class="btn btn--primary btn--lg btn--block"><span class="btn__label">Нэвтрэх</span></button>
+  </form>
+
+  {% if google_enabled %}
+  <div class="divider"><span>эсвэл</span></div>
+  <a class="btn btn--secondary btn--lg btn--block" href="{{ url_for('auth.login_google') }}">Google-ээр нэвтрэх</a>
+  {% endif %}
+
+  <p class="auth-card__back"><a href="{{ url_for('main.index') }}">{{ icon("arrow-left") }}<span>Нүүр хуудас руу буцах</span></a></p>
+</section>
+{% endblock %}

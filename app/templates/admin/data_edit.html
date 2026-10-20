@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field %}
+{% block title %}Өгөгдөл засах — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+{% block content %}
+<header class="page-header">
+  <a class="back-link" href="{{ url_for('admin.data_list') }}">{{ icon("arrow-left") }}<span>Жагсаалт руу буцах</span></a>
+  <h1 class="page-title">Өгөгдөл засах #{{ entry.id }}</h1>
+  <p class="muted">{{ entry.filename or '—' }}</p>
+</header>
+
+<section class="card">
+  <form method="post" class="stack">
+    {{ form.hidden_tag() }}
+    {{ field(form.content, rows="20", spellcheck="false") }}
+    <div class="cluster">
+      <button type="submit" class="btn btn--primary"><span class="btn__label">Хадгалах</span></button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.data_list') }}">Болих</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

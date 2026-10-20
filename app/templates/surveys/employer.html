@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, rating %}
+{% block title %}{{ spec.title }} — {{ site_name }}{% endblock %}
+{% block container_class %} container--form{% endblock %}
+{% block content %}
+<form method="post" class="survey" data-survey-form>
+  {{ form.hidden_tag() }}
+  <div class="hp" aria-hidden="true">
+    <label for="{{ form.website.id }}">Website</label>
+    {{ form.website(tabindex="-1", autocomplete="off") }}
+  </div>
+
+  <header class="page-header">
+    <h1 class="page-title">{{ spec.title }}</h1>
+    <p class="muted">Эрхэм хүндэт ажил олгогч танд энэ өдрийн мэндийг хүргэе! Судалгаанд үнэн зөв хариулна уу. <span class="req">*</span> тэмдэгтэй талбарыг заавал бөглөнө.</p>
+  </header>
+
+  <div class="progress" data-progress role="status" aria-live="polite">
+    <progress class="progress__bar" value="0" max="1">0%</progress>
+    <span class="progress__label" data-progress-label></span>
+  </div>
+
+  <section class="card form-section">
+    <h2 class="form-section__title">1. Байгууллагын ерөнхий мэдээлэл</h2>
+    <div class="grid grid--2">
+      {{ field(form.company_name, autocomplete="organization") }}
+      {{ field(form.respondent_name, autocomplete="name") }}
+      {{ field(form.position, autocomplete="organization-title") }}
+      {{ field(form.phone, autocomplete="tel", inputmode="tel", placeholder="99112233") }}
+      {{ field(form.email, autocomplete="email", placeholder="name@example.mn") }}
+      {{ field(form.reg_number, inputmode="numeric") }}
+      {{ field(form.aimag_city) }}
+      {{ field(form.sum_district) }}
+      {{ field(form.legal_form) }}
+      {{ field(form.property_form) }}
+      {{ field(form.economic_sector) }}
+      {{ field(form.employee_count) }}
+    </div>
+  </section>
+
+  {% for group in spec.rating_groups %}
+  <section class="card form-section">
+    <h2 class="form-section__title">2. {{ group.title }} (1 - 5 оноо)</h2>
+    {% if group.hint %}<p class="scale-hint">{{ group.hint }}</p>{% endif %}
+    <div class="rating-list">
+      {% for question in group.questions %}
+        {{ rating(form[question.field]) }}
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <section class="card form-section">
+    {{ field(form.rehire_interest) }}
+  </section>
+
+  <button type="submit" class="btn btn--success btn--lg btn--block"><span class="btn__label">Судалгаа илгээх</span></button>
+</form>
+{% endblock %}

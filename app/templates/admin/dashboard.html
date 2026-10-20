@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, score_meter %}
+{% block title %}Админ самбар — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+{% block content %}
+<header class="page-header page-header--row">
+  <div>
+    <h1 class="page-title">Судалгааны нэгдсэн самбар</h1>
+    <p class="muted">Нийт хариулт, дундаж үнэлгээ, хариултын тархалт.</p>
+  </div>
+  <a class="btn btn--secondary" href="{{ url_for('admin.data_list') }}">{{ icon("database") }}<span>JSON өгөгдөл ({{ data_entry_count }})</span></a>
+</header>
+
+<div class="grid grid--2">
+  {% for s in summaries %}
+  <section class="card stat-card">
+    <div class="stat-card__head">
+      <span class="survey-card__icon">{{ icon(s.spec.icon) }}</span>
+      <h2 class="card__title">{{ s.spec.short_title }}</h2>
+    </div>
+    <p class="stat__value">{{ s.total }}</p>
+    <p class="muted">нийт хариулт</p>
+    <dl class="stat-card__facts">
+      <div><dt>Сүүлийн 7 хоног</dt><dd>{{ s.last_7_days }}</dd></div>
+      <div><dt>Сүүлийн 30 хоног</dt><dd>{{ s.last_30_days }}</dd></div>
+      <div><dt>Дундаж үнэлгээ</dt><dd>{% if s.overall_average is not none %}{{ s.overall_average }} / 5{% else %}—{% endif %}</dd></div>
+    </dl>
+    <div class="cluster">
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.responses', survey_type=s.spec.key) }}">{{ icon("eye") }}<span>Харах</span></a>
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.export_responses', survey_type=s.spec.key, fmt='xlsx') }}">{{ icon("download") }}<span>Excel</span></a>
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.export_responses', survey_type=s.spec.key, fmt='csv') }}">{{ icon("download") }}<span>CSV</span></a>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<section class="card">
+  <h2 class="card__title">Сүүлийн 14 хоногийн хариулт</h2>
+  <div class="chart-legend">
+    <span class="legend legend--employer">Ажил олгогч</span>
+    <span class="legend legend--student">Суралцагч</span>
+  </div>
+  <svg class="chart" viewBox="0 0 420 160" role="img" aria-label="Сүүлийн 14 хоногийн өдөр тутмын хариултын тоо">
+    <line class="chart__axis" x1="0" y1="120" x2="420" y2="120"/>
+    {% for day in timeline %}
+      {% set x = loop.index0 * 30 + 5 %}
+      {% set eh = (day.employer * 100 / peak)|round(1) %}
+      {% set sh = (day.student * 100 / peak)|round(1) %}
+      <g>
+        <title>{{ day.date.strftime('%Y-%m-%d') }}: ажил олгогч {{ day.employer }}, суралцагч {{ day.student }}</title>
+        {% if day.employer %}<rect class="chart__bar chart__bar--employer" x="{{ x }}" y="{{ 120 - eh }}" width="20" height="{{ eh }}" rx="2"/>{% endif %}
+        {% if day.student %}<rect class="chart__bar chart__bar--student" x="{{ x }}" y="{{ 120 - eh - sh }}" width="20" height="{{ sh }}" rx="2"/>{% endif %}
+        {% if day.total %}<text class="chart__value" x="{{ x + 10 }}" y="{{ 120 - eh - sh - 4 }}" text-anchor="middle">{{ day.total }}</text>{% endif %}
+        {% if loop.index0 is even %}<text class="chart__label" x="{{ x + 10 }}" y="138" text-anchor="middle">{{ day.date.strftime('%d.%m') }}</text>{% endif %}
+      </g>
+    {% endfor %}
+  </svg>
+</section>
+
+{% for s in summaries %}
+<section class="card">
+  <h2 class="card__title">{{ s.spec.title }}</h2>
+  {% if s.total == 0 %}
+    <p class="empty">Одоогоор хариулт байхгүй байна.</p>
+  {% else %}
+    {% for group in s.groups %}
+    <h3 class="subhead">{{ group.title }} — дундаж оноо</h3>
+    <ul class="meter-list">
+      {% for item in group.rows %}
+      <li class="meter-row">
+        <span class="meter-row__label">{{ item.label }}</span>
+        {{ score_meter(item.average) }}
+        <span class="meter-row__value">{{ item.average if item.average is not none else "—" }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+
+    <div class="grid grid--2 distributions">
+      {% for dist in s.distributions if dist.rows %}
+      <div>
+        <h3 class="subhead">{{ dist.label }}</h3>
+        <ul class="meter-list">
+          {% for row in dist.rows %}
+          <li class="meter-row">
+            <span class="meter-row__label">{{ row.value }}</span>
+            <meter class="meter meter--neutral" min="0" max="100" value="{{ row.percent }}" aria-label="{{ row.percent }}%"></meter>
+            <span class="meter-row__value">{{ row.count }} <small class="muted">({{ row.percent }}%)</small></span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

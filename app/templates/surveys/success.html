@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Баярлалаа — {{ site_name }}{% endblock %}
+{% block container_class %} container--narrow{% endblock %}
+{% block content %}
+<section class="card success-card">
+  <span class="success-card__icon">{{ icon("check") }}</span>
+  <h1 class="page-title">Баярлалаа!</h1>
+  <p class="muted">Таны судалгааны хариултыг амжилттай хүлээн авлаа.</p>
+  <div class="cluster cluster--center">
+    <a class="btn btn--primary" href="{{ url_for('main.index') }}">Нүүр хуудас руу буцах</a>
+  </div>
+</section>
+{% endblock %}

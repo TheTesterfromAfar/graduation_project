@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block content %}
+<section class="hero">
+  <h1 class="hero__title">Сэтгэл ханамжийн судалгаа</h1>
+  <p class="hero__lead">Та өөрт тохирох судалгааг сонгон бөглөнө үү. Таны хариулт сургалт, дадлагын чанарыг сайжруулахад ашиглагдана.</p>
+</section>
+
+<div class="grid grid--2">
+  {% set blurbs = {
+    "employer": "Байгууллагын ажил олгогчдод зориулсан төгсөгчдийн ур чадварын үнэлгээний судалгаа.",
+    "student": "Үйлдвэрлэлийн дадлага хийж буй суралцагчдад зориулсан орчин, удирдамжийн судалгаа."
+  } %}
+  {% for key, spec in surveys.items() %}
+  <a class="card card--link survey-card" href="{{ url_for('surveys.' ~ key) }}">
+    <span class="survey-card__icon">{{ icon(spec.icon) }}</span>
+    <h2 class="card__title">{{ spec.title }}</h2>
+    <p class="muted">{{ blurbs[key] }}</p>
+    <span class="btn btn--primary btn--block">Судалгаа бөглөх</span>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% from "_macros.html" import icon, csrf %}
+{% set endpoint = request.endpoint or "" %}
+<header class="navbar">
+  <div class="navbar__inner">
+    <a class="navbar__brand" href="{{ url_for('main.index') }}">
+      {{ icon("chart", "navbar__logo") }}<span>{{ site_name }}</span>
+    </a>
+    <button type="button" class="navbar__toggle" data-nav-toggle aria-expanded="false" aria-controls="site-menu" aria-label="Цэс нээх">
+      {{ icon("menu") }}
+    </button>
+    <nav class="navbar__menu" id="site-menu" aria-label="Үндсэн цэс">
+      <a class="navbar__link{% if endpoint == 'main.index' %} is-active{% endif %}" href="{{ url_for('main.index') }}">Нүүр</a>
+      <a class="navbar__link{% if endpoint == 'surveys.employer' %} is-active{% endif %}" href="{{ url_for('surveys.employer') }}">Ажил олгогч</a>
+      <a class="navbar__link{% if endpoint == 'surveys.student' %} is-active{% endif %}" href="{{ url_for('surveys.student') }}">Суралцагч</a>
+      <span class="navbar__spacer"></span>
+      {% if current_user.is_authenticated %}
+        <a class="navbar__link{% if endpoint.startswith('admin.') %} is-active{% endif %}" href="{{ url_for('admin.dashboard') }}">Админ самбар</a>
+        <span class="navbar__user" title="{{ current_user.email }}">{{ current_user.full_name or current_user.email }}</span>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="navbar__form">
+          {{ csrf() }}
+          <button type="submit" class="btn btn--ghost btn--sm">{{ icon("logout") }}<span>Гарах</span></button>
+        </form>
+      {% else %}
+        <a class="navbar__link navbar__link--cta" href="{{ url_for('auth.login') }}">{{ icon("lock") }}<span>Админ нэвтрэх</span></a>
+      {% endif %}
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field, csrf %}
+{% block title %}JSON өгөгдөл — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+{% block content %}
+<header class="page-header">
+  <a class="back-link" href="{{ url_for('admin.dashboard') }}">{{ icon("arrow-left") }}<span>Самбар руу буцах</span></a>
+  <h1 class="page-title">JSON өгөгдөл</h1>
+  <p class="muted">Админы оруулсан JSON файл, текст өгөгдлүүд.</p>
+</header>
+
+{% if current_user.is_admin %}
+<section class="card">
+  <h2 class="card__title">JSON файл эсвэл текст нэмэх</h2>
+  <form method="post" action="{{ url_for('admin.data_add') }}" enctype="multipart/form-data" class="stack">
+    {{ form.hidden_tag() }}
+    {{ field(form.json_file, accept=".json,application/json") }}
+    {{ field(form.text_content, rows="6", spellcheck="false", placeholder='[{"Д/Д": 1, "Овог": "..."}]') }}
+    <div class="cluster"><button type="submit" class="btn btn--primary"><span class="btn__label">Өгөгдлийг хадгалах</span></button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card card--flush">
+  {% if entries %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th scope="col">ID</th><th scope="col">Файлын нэр / Төрөл</th><th scope="col">Хэмжээ</th><th scope="col">Огноо</th><th scope="col"><span class="sr-only">Үйлдэл</span></th></tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td data-label="ID">{{ entry.id }}</td>
+          <td data-label="Файлын нэр">{{ entry.filename or '—' }}</td>
+          <td data-label="Хэмжээ">{{ (entry.size / 1024)|round(1) }} KB</td>
+          <td data-label="Огноо">{{ entry.timestamp|localtime }}</td>
+          <td class="table__actions">
+            {% if current_user.is_admin %}
+              <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.data_edit', entry_id=entry.id) }}">{{ icon("edit") }}<span>Засах</span></a>
+              <form method="post" action="{{ url_for('admin.data_delete', entry_id=entry.id) }}" class="inline-form" data-confirm="Энэ өгөгдлийг устгахдаа итгэлтэй байна уу?">
+                {{ csrf() }}
+                <button type="submit" class="btn btn--danger btn--sm">{{ icon("trash") }}<span>Устгах</span></button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="empty">Одоогоор админы оруулсан нэмэлт өгөгдөл байхгүй байна.</p>
+  {% endif %}
+</section>
+{% endblock %}
