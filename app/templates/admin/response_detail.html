@@ -21,7 +21,7 @@
   <h2 class="card__title">Ерөнхий мэдээлэл</h2>
   <dl class="details">
     {% for col, label in spec.leading_fields %}
-    <div class="details__row"><dt>{{ label }}</dt><dd>{{ (record|attr(col)) if (record|attr(col)) is not none and (record|attr(col)) != '' else '—' }}</dd></div>
+    <div class="details__row"><dt>{{ label }}</dt><dd class="prewrap">{{ (record|attr(col)) if (record|attr(col)) is not none and (record|attr(col)) != '' else '—' }}</dd></div>
     {% endfor %}
   </dl>
 </section>

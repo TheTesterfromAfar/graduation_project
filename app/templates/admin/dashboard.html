@@ -8,7 +8,10 @@
     <h1 class="page-title">Судалгааны нэгдсэн самбар</h1>
     <p class="muted">Нийт хариулт, дундаж үнэлгээ, хариултын тархалт.</p>
   </div>
-  <a class="btn btn--secondary" href="{{ url_for('admin.data_list') }}">{{ icon("database") }}<span>JSON өгөгдөл ({{ data_entry_count }})</span></a>
+  <div class="cluster">
+    <a class="btn btn--primary" href="{{ url_for('admin.major_results') }}">{{ icon("chart") }}<span>Мэргэжлээр харах</span></a>
+    <a class="btn btn--secondary" href="{{ url_for('admin.data_list') }}">{{ icon("database") }}<span>JSON өгөгдөл ({{ data_entry_count }})</span></a>
+  </div>
 </header>
 
 <div class="grid grid--2">

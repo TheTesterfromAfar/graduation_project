@@ -105,6 +105,23 @@ See `.env.example` for every variable. The important ones:
   `flask --app wsgi db migrate -m "add question"` then `flask --app wsgi db upgrade`.
 * **Change answer choices:** edit the tuples at the top of the file. Old responses keep their stored text.
 
+## Results by major (мэргэжил)
+
+`/admin/majors` (button **Мэргэжлээр харах** on the dashboard) shows both surveys grouped by major:
+
+* **Student survey** - the free-text `major` answer. **Employer survey** - the new required question
+  *"1.12 Танай байгууллагад ямар мэргэжлийн суралцагчид дадлага хийж байна вэ?"* (`intern_majors`,
+  several majors separated by comma or new line).
+* Spellings are grouped case- and whitespace-insensitively; different wording ("Гагнуур" vs
+  "Гагнуурчин") stays separate, so keep the typed names consistent.
+* An employer that lists several majors is counted under each of them. Its 1-5 ratings describe its
+  graduates as a whole (the survey does not ask per major), so every listed major shares that rating.
+* Employer rows saved before the question existed have no major; the page reports how many were left out.
+* Each major links to the filtered response list (`?major=...`), and both tables export to CSV/Excel.
+
+Existing databases need the new column: `flask --app wsgi db upgrade` (Docker applies it on start).
+The grouping code lives in `app/services/majors.py` and has no Flask/database imports.
+
 ## Tests
 
 ```bash

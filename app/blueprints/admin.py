@@ -10,7 +10,7 @@ from ..extensions import db
 from ..forms import AdminDataEditForm, AdminDataForm
 from ..models import ROLE_ADMIN, ROLES, SURVEY_MODELS, AdminDataEntry
 from ..questions import SURVEYS
-from ..services import export, queries, stats
+from ..services import export, majors, queries, stats
 
 bp = Blueprint("admin", __name__)
 
@@ -110,6 +110,42 @@ def export_responses(survey_type, fmt):
                         headers={"Content-Disposition": f'attachment; filename="{filename}"'})
     return send_file(export.build_xlsx(headers, rows), mimetype=export.XLSX_MIME, as_attachment=True,
                      download_name=filename)
+
+
+# --------------------------------------------------------------------------------------
+# Results by major (мэргэжил) - both surveys
+# --------------------------------------------------------------------------------------
+def _major_results():
+    """{survey_type: summary} for every survey. Grouping happens in Python (see services/majors.py)."""
+    return {
+        key: majors.summarize(db.session.execute(select(SURVEY_MODELS[key])).scalars().all(), spec)
+        for key, spec in SURVEYS.items()
+    }
+
+
+@bp.route("/majors")
+def major_results():
+    results = _major_results()
+    return render_template("admin/majors.html", results=results, specs=SURVEYS,
+                           overview=majors.combine(results["student"], results["employer"]))
+
+
+@bp.route("/majors/<survey_type>/export/<fmt>")
+def export_major_results(survey_type, fmt):
+    spec, _ = _survey(survey_type)
+    if fmt not in ("csv", "xlsx"):
+        abort(404)
+
+    result = majors.summarize(db.session.execute(select(SURVEY_MODELS[survey_type])).scalars().all(), spec)
+    headers, rows = majors.export_table(result, spec)
+    filename = f"{survey_type}_by_major_{datetime.now().strftime('%Y-%m-%d')}.{fmt}"
+    current_app.logger.info("%s exported %s results by major as %s", current_user.email, survey_type, fmt)
+
+    if fmt == "csv":
+        return Response(export.iter_csv(headers, rows), mimetype=export.CSV_MIME,
+                        headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+    return send_file(export.build_xlsx(headers, rows, sheet_title="Мэргэжлээр"), mimetype=export.XLSX_MIME,
+                     as_attachment=True, download_name=filename)
 
 
 # --------------------------------------------------------------------------------------

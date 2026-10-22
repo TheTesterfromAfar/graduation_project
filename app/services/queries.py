@@ -11,6 +11,7 @@ SORTS = {
     "name": (None, "asc"),  # resolved to spec.name_field
 }
 MAX_SEARCH_LENGTH = 100
+MAX_MAJOR_LENGTH = 150
 
 
 def escape_like(term):
@@ -32,6 +33,11 @@ def parse_filters(args, spec):
     term = (args.get("q") or "").strip()[:MAX_SEARCH_LENGTH]
     if term:
         cleaned["q"] = term
+
+    if spec.major_field:
+        major = " ".join((args.get("major") or "").split())[:MAX_MAJOR_LENGTH]
+        if major:
+            cleaned["major"] = major
 
     for option in spec.filters:
         value = (args.get(option.name) or "").strip()
@@ -56,6 +62,12 @@ def build_query(model, spec, filters, tz_name):
     if term:
         pattern = f"%{escape_like(term)}%"
         stmt = stmt.where(or_(*[getattr(model, name).ilike(pattern, escape="\\") for name in spec.search_fields]))
+
+    major = filters.get("major")
+    if major and spec.major_field:
+        # "Contains" match: a student's major is one free-text value, an employer's is a list of them.
+        pattern = f"%{escape_like(major)}%"
+        stmt = stmt.where(getattr(model, spec.major_field).ilike(pattern, escape="\\"))
 
     for option in spec.filters:
         if option.name in filters:

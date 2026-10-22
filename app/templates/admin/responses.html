@@ -10,6 +10,7 @@
     <p class="muted">{% if has_filters %}Шүүлтүүрт таарсан: {% else %}Нийт: {% endif %}<strong>{{ pagination.total }}</strong> хариулт</p>
   </div>
   <div class="cluster">
+    <a class="btn btn--secondary" href="{{ url_for('admin.major_results') }}">{{ icon("chart") }}<span>Мэргэжлээр</span></a>
     <a class="btn btn--secondary" href="{{ url_for('admin.export_responses', survey_type=survey_type, fmt='xlsx', **filters) }}">{{ icon("download") }}<span>Excel</span></a>
     <a class="btn btn--secondary" href="{{ url_for('admin.export_responses', survey_type=survey_type, fmt='csv', **filters) }}">{{ icon("download") }}<span>CSV</span></a>
   </div>
@@ -22,6 +23,12 @@
       <label for="q" class="field__label">Хайх</label>
       <input type="search" id="q" name="q" class="input" value="{{ filters.get('q', '') }}" maxlength="100" placeholder="Нэр, байгууллага, мэргэжил...">
     </div>
+    {% if spec.major_field %}
+    <div class="field">
+      <label for="major" class="field__label">Мэргэжил</label>
+      <input type="text" id="major" name="major" class="input" value="{{ filters.get('major', '') }}" maxlength="150" placeholder="Жишээ: Гагнуур">
+    </div>
+    {% endif %}
     {% for option in spec.filters %}
     <div class="field">
       <label for="f-{{ option.name }}" class="field__label">{{ option.label }}</label>

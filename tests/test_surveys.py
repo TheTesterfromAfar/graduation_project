@@ -19,6 +19,20 @@ def test_employer_submission_is_saved_and_normalised(app, client):
         assert row.property_form is None               # blank optional select stored as NULL, not ''
 
 
+def test_employer_must_name_the_interns_majors(app, client):
+    response = client.post("/employer", data=employer_payload(intern_majors=""))
+    assert response.status_code == 200
+    assert "Энэ талбарыг бөглөнө үү" in response.get_data(as_text=True)
+    assert client.post("/employer", data=employer_payload(intern_majors="x" * 501)).status_code == 200
+    assert count(app, EmployerSurvey) == 0
+
+
+def test_employer_interns_majors_are_saved(app, client):
+    client.post("/employer", data=employer_payload(intern_majors="  Гагнуур,\nАвтомеханик "))
+    with app.app_context():
+        assert db.session.query(EmployerSurvey).one().intern_majors == "Гагнуур,\nАвтомеханик"
+
+
 def test_missing_rating_is_rejected_with_message(app, client):
     payload = employer_payload()
     del payload["q2_1_3"]

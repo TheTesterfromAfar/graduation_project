@@ -97,7 +97,7 @@ def employer_payload(**overrides):
     data = {
         "company_name": "Тест ХХК", "respondent_name": "Бат", "position": "Захирал",
         "phone": "99112233", "email": "Bat@Example.mn", "aimag_city": "Өвөрхангай",
-        "rehire_interest": "Тийм",
+        "rehire_interest": "Тийм", "intern_majors": "Гагнуур, Автомеханик",
     }
     data.update({field: "4" for field in EMPLOYER.rating_fields})
     data.update(overrides)

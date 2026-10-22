@@ -126,6 +126,11 @@ class EmployerSurveyForm(SurveyForm):
     property_form = _select("1.9. Өмчийн хэлбэр", q.PROPERTY_FORM)
     economic_sector = _text("1.10. Эдийн засгийн салбар", 200)
     employee_count = _select("1.11. Ажилтны тоо", q.EMPLOYEE_COUNT)
+    intern_majors = TextAreaField(
+        "1.12. Танай байгууллагад ямар мэргэжлийн суралцагчид дадлага хийж байна вэ?",
+        filters=[_strip],
+        validators=[DataRequired(MSG_REQUIRED), Length(max=500, message=MSG_MAX_LEN)],
+    )
     rehire_interest = _select(
         "2.2. Та энэ сургалтын байгууллагын төгсөгчийг дахин ажилд авах сонирхолтой байна уу?",
         q.REHIRE_INTEREST,

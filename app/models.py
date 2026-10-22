@@ -97,6 +97,8 @@ class EmployerSurvey(db.Model):
     property_form = db.Column(db.String(100))
     economic_sector = db.Column(db.String(200))
     employee_count = db.Column(db.String(50))
+    # Free text: majors whose students do an internship at this employer ("Гагнуур, Автомеханик").
+    intern_majors = db.Column(db.Text)
 
     q2_1_1 = db.Column(db.Integer)
     q2_1_2 = db.Column(db.Integer)

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Мэргэжлээр — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+
+{# Average score as a number tinted by band (same thresholds as the meters: <2.5, <=3.5, above). #}
+{% macro score(value) -%}
+{%- if value is none -%}<span class="muted">—</span>
+{%- else -%}<span class="score score--{{ 'low' if value < 2.5 else ('mid' if value <= 3.5 else 'high') }}">{{ value }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro percent(value) -%}
+{%- if value is none -%}<span class="muted">—</span>{%- else -%}{{ value }}%{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<header class="page-header page-header--row">
+  <div>
+    <a class="back-link" href="{{ url_for('admin.dashboard') }}">{{ icon("arrow-left") }}<span>Самбар руу буцах</span></a>
+    <h1 class="page-title">Мэргэжлээр харах үр дүн</h1>
+    <p class="muted">Суралцагч болон ажил олгогчийн судалгааны хариултыг мэргэжлээр нь нэгтгэв.</p>
+  </div>
+</header>
+
+<section class="card">
+  <h2 class="card__title">Нэгдсэн харьцуулалт</h2>
+  {% if overview %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Мэргэжил</th>
+          <th scope="col">Суралцагч: хариулт</th>
+          <th scope="col">Суралцагч: дундаж</th>
+          <th scope="col">Ажил олгогч: хариулт</th>
+          <th scope="col">Ажил олгогч: дундаж</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in overview %}
+        <tr>
+          <td data-label="Мэргэжил"><strong>{{ row.label }}</strong></td>
+          <td data-label="Суралцагч: хариулт" class="table__score">{{ row.student_count or '—' }}</td>
+          <td data-label="Суралцагч: дундаж" class="table__score">{{ score(row.student_average) }}</td>
+          <td data-label="Ажил олгогч: хариулт" class="table__score">{{ row.employer_count or '—' }}</td>
+          <td data-label="Ажил олгогч: дундаж" class="table__score">{{ score(row.employer_average) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted note">Мэргэжлийн нэрийг том/жижиг үсэг, илүү зайнаас үл хамааран нэг мэргэжил гэж тооцно. Харин өөр үгээр бичсэн нэр (жишээ нь «Гагнуур» ба «Гагнуурчин») тусдаа мэргэжил болно.</p>
+  {% else %}
+  <p class="empty">Мэргэжлээр нэгтгэх хариулт одоогоор байхгүй байна.</p>
+  {% endif %}
+</section>
+
+{% for key, result in results.items() %}
+{% set spec = specs[key] %}
+<section class="card">
+  <div class="card__head">
+    <h2 class="card__title">{{ spec.title }}</h2>
+    <div class="cluster">
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.export_major_results', survey_type=key, fmt='xlsx') }}">{{ icon("download") }}<span>Excel</span></a>
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.export_major_results', survey_type=key, fmt='csv') }}">{{ icon("download") }}<span>CSV</span></a>
+    </div>
+  </div>
+
+  {% if key == 'employer' %}
+  <p class="muted note">Байгууллага хэд хэдэн мэргэжил бичсэн бол мэргэжил тус бүрт тооцогдоно. Үнэлгээ нь тухайн байгууллагын төгсөгчдийн ерөнхий үнэлгээ тул тэр байгууллагын бүх мэргэжилд адил орно.</p>
+  {% endif %}
+  {% if result.unassigned %}
+  <p class="hint-banner">Мэргэжил бичээгүй {{ result.unassigned }} хариулт энэ хүснэгтэд ороогүй байна{% if key == 'employer' %} (энэ асуултыг нэмэхээс өмнө бөглөсөн хариултууд){% endif %}.</p>
+  {% endif %}
+
+  {% if result.rows %}
+  <div class="table-wrap">
+    <table class="table table--matrix">
+      <thead>
+        <tr>
+          <th scope="col">Мэргэжил</th>
+          <th scope="col">Хариулт</th>
+          <th scope="col">Дундаж</th>
+          {% for q in spec.rating_questions %}<th scope="col" title="{{ q.label }}">{{ q.short }}</th>{% endfor %}
+          {% for _, label, _ in spec.major_highlights %}<th scope="col">{{ label }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in result.rows %}
+        <tr>
+          <td data-label="Мэргэжил"><a href="{{ url_for('admin.responses', survey_type=key, major=row.label) }}"><strong>{{ row.label }}</strong></a></td>
+          <td data-label="Хариулт" class="table__score">{{ row.count }}</td>
+          <td data-label="Дундаж" class="table__score">{{ score(row.average) }}</td>
+          {% for q in spec.rating_questions %}
+          <td data-label="{{ q.short }}" class="table__score">{{ score(row.averages[q.field]) }}</td>
+          {% endfor %}
+          {% for h in row.highlights %}
+          <td data-label="{{ h.label }}" class="table__score">{{ percent(h.percent) }}{% if h.total %} <small class="muted">({{ h.positive }}/{{ h.total }})</small>{% endif %}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Одоогоор мэргэжлээр харуулах хариулт байхгүй байна.</p>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

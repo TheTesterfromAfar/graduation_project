@@ -47,6 +47,12 @@ class SurveySpec:
     list_columns: Tuple[Tuple[str, str], ...]
     name_field: str                                # used for "sort by name"
     distribution_fields: Tuple[Tuple[str, str], ...]
+    # --- results by major (мэргэжил) ---------------------------------------------------------
+    # Column that holds the major(s) a response belongs to. Student: one free-text major.
+    # Employer: a free-text list of the majors whose students are doing an internship there.
+    major_field: str = ""
+    # (column, label, positive answer): shown as "% of respondents who answered <positive>".
+    major_highlights: Tuple[Tuple[str, str, str], ...] = ()
 
     @property
     def rating_questions(self):
@@ -110,6 +116,7 @@ EMPLOYER = SurveySpec(
         ("property_form", "Өмчийн хэлбэр"),
         ("economic_sector", "Эдийн засгийн салбар"),
         ("employee_count", "Ажилтны тоо"),
+        ("intern_majors", "Дадлага хийж буй суралцагчдын мэргэжил"),
     ),
     rating_groups=(
         RatingGroup(
@@ -137,7 +144,7 @@ EMPLOYER = SurveySpec(
         FilterOption("rehire_interest", "Дахин ажилд авах сонирхол", REHIRE_INTEREST),
     ),
     search_fields=("company_name", "respondent_name", "position", "email", "phone",
-                   "reg_number", "sum_district", "economic_sector"),
+                   "reg_number", "sum_district", "economic_sector", "intern_majors"),
     list_columns=(
         ("timestamp", "Огноо"),
         ("company_name", "Байгууллага"),
@@ -151,6 +158,10 @@ EMPLOYER = SurveySpec(
         ("aimag_city", "Аймаг/Хот"),
         ("legal_form", "Хариуцлагын хэлбэр"),
         ("employee_count", "Ажилтны тоо"),
+    ),
+    major_field="intern_majors",
+    major_highlights=(
+        ("rehire_interest", "Дахин ажилд авах сонирхолтой", "Тийм"),
     ),
 )
 
@@ -218,6 +229,12 @@ STUDENT = SurveySpec(
         ("job_offer_received", "Ажлын байрны санал авсан уу"),
         ("study_type", "Суралцаж буй хэлбэр"),
         ("gender", "Хүйс"),
+    ),
+    major_field="major",
+    major_highlights=(
+        ("recommend_company", "Дахин дадлага хийхийг санал болгосон", "Тийм"),
+        ("received_salary", "Цалин хөлс авсан", "Тийм"),
+        ("job_offer_received", "Ажлын байрны санал авсан", "Тийм"),
     ),
 )
 

@@ -36,6 +36,8 @@
       {{ field(form.economic_sector) }}
       {{ field(form.employee_count) }}
     </div>
+    {{ field(form.intern_majors, rows="3", placeholder="Жишээ: Гагнуур, Автомеханик",
+             hint="Хэд хэдэн мэргэжил байвал таслалаар эсвэл шинэ мөрөөр тусгаарлаж бичнэ үү.") }}
   </section>
 
   {% for group in spec.rating_groups %}

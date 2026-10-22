@@ -359,3 +359,14 @@ a.pagination__link:hover { background: var(--accent-soft); border-color: var(--a
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---- Results by major ---------------------------------------------------------------- */
+.card__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .75rem; }
+.card__head .card__title { margin: 0; }
+.note { font-size: .875rem; margin: .75rem 0 0; }
+.score { display: inline-block; min-width: 2.6rem; padding: .1rem .5rem; border-radius: 999px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 650; }
+.score--low { background: var(--danger-soft); color: var(--danger); }
+.score--mid { background: var(--warning-soft); color: var(--warning); }
+.score--high { background: var(--success-soft); color: var(--success); }
+.table--matrix thead th { white-space: normal; min-width: 6.5rem; vertical-align: bottom; }
+.table--matrix thead th:first-child { min-width: 10rem; }
