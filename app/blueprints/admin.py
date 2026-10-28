@@ -4,13 +4,15 @@ from flask import (Blueprint, Response, abort, current_app, flash, redirect, ren
                    send_file, url_for)
 from flask_login import current_user
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..decorators import roles_required
 from ..extensions import db
 from ..forms import AdminDataEditForm, AdminDataForm
 from ..models import ROLE_ADMIN, ROLES, SURVEY_MODELS, AdminDataEntry
 from ..questions import SURVEYS
-from ..services import export, majors, queries, stats
+from ..services import export, majors, queries, stats, survey_config, survey_store
+from ..services.survey_store import get_surveys
 
 bp = Blueprint("admin", __name__)
 
@@ -25,9 +27,10 @@ def require_staff():
 
 
 def _survey(survey_type):
-    if survey_type not in SURVEYS:
+    surveys = get_surveys()
+    if survey_type not in surveys:
         abort(404)
-    return SURVEYS[survey_type], SURVEY_MODELS[survey_type]
+    return surveys[survey_type], SURVEY_MODELS[survey_type]
 
 
 # --------------------------------------------------------------------------------------
@@ -35,7 +38,7 @@ def _survey(survey_type):
 # --------------------------------------------------------------------------------------
 @bp.route("/", strict_slashes=False)
 def dashboard():
-    summaries = [stats.survey_summary(spec) for spec in SURVEYS.values()]
+    summaries = [stats.survey_summary(spec) for spec in get_surveys().values()]
     timeline = stats.daily_counts(current_app.config["APP_TIMEZONE"], days=14)
     peak = max([day["total"] for day in timeline] + [1])
     return render_template("admin/dashboard.html", summaries=summaries, timeline=timeline, peak=peak,
@@ -119,14 +122,14 @@ def _major_results():
     """{survey_type: summary} for every survey. Grouping happens in Python (see services/majors.py)."""
     return {
         key: majors.summarize(db.session.execute(select(SURVEY_MODELS[key])).scalars().all(), spec)
-        for key, spec in SURVEYS.items()
+        for key, spec in get_surveys().items()
     }
 
 
 @bp.route("/majors")
 def major_results():
     results = _major_results()
-    return render_template("admin/majors.html", results=results, specs=SURVEYS,
+    return render_template("admin/majors.html", results=results, specs=get_surveys(),
                            overview=majors.combine(results["student"], results["employer"]))
 
 
@@ -146,6 +149,67 @@ def export_major_results(survey_type, fmt):
                         headers={"Content-Disposition": f'attachment; filename="{filename}"'})
     return send_file(export.build_xlsx(headers, rows, sheet_title="Мэргэжлээр"), mimetype=export.XLSX_MIME,
                      as_attachment=True, download_name=filename)
+
+
+# --------------------------------------------------------------------------------------
+# Survey questions editor (admin only)
+# --------------------------------------------------------------------------------------
+@bp.route("/questions")
+@roles_required(ROLE_ADMIN)
+def questions_index():
+    return render_template("admin/questions.html", specs=get_surveys())
+
+
+def _render_editor(survey_type, document, draft=None):
+    """The editor page. `draft` is the rejected form (request.form): its text is shown again."""
+    default_spec = SURVEYS[survey_type]
+
+    def is_draft(action, key=""):
+        return draft is not None and draft.get("action") == action and draft.get("key", "") == key
+
+    def val(action, key, name, current):
+        """What to put in an input: the admin's rejected text if this is the form they just sent."""
+        return draft.get(name, current) if is_draft(action, key) else current
+
+    view = survey_config.describe(default_spec, document, survey_store.info_fields(survey_type))
+    return render_template("admin/questions_edit.html", survey_type=survey_type, spec=default_spec, view=view,
+                           is_draft=is_draft, val=val)
+
+
+@bp.route("/questions/<survey_type>", methods=["GET", "POST"])
+@roles_required(ROLE_ADMIN)
+def questions_edit(survey_type):
+    if survey_type not in SURVEYS:
+        abort(404)
+    default_spec = SURVEYS[survey_type]
+
+    if request.method == "GET":
+        return _render_editor(survey_type, survey_store.load_document(survey_type))
+
+    action = request.form.get("action", "")
+    try:
+        if action == "reset":
+            survey_store.reset_document(survey_type)
+            message, anchor = "Анхны асуулга сэргээгдлээ.", "title"
+        else:
+            # Lock the row so two admins saving at the same moment cannot overwrite each other.
+            document = survey_store.load_document(survey_type, lock=True)
+            new_document, message, anchor = survey_config.apply_action(
+                document, default_spec, survey_store.info_fields(survey_type), action, request.form)
+            survey_store.save_document(survey_type, new_document, current_user.email)
+    except survey_config.ConfigError as exc:
+        db.session.rollback()
+        flash(str(exc), "danger")
+        return _render_editor(survey_type, survey_store.load_document(survey_type), draft=request.form)
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Could not save %s survey questions", survey_type)
+        flash("Хадгалах үед алдаа гарлаа. Дахин оролдоно уу.", "danger")
+        return _render_editor(survey_type, survey_store.load_document(survey_type), draft=request.form)
+
+    current_app.logger.info("%s edited %s survey questions (%s)", current_user.email, survey_type, action)
+    flash(message, "success")
+    return redirect(url_for("admin.questions_edit", survey_type=survey_type, _anchor=anchor))
 
 
 # --------------------------------------------------------------------------------------

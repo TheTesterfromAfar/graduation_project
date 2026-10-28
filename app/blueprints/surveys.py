@@ -2,9 +2,9 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import db, limiter
-from ..forms import SURVEY_FORMS
+from ..forms import survey_form
 from ..models import SURVEY_MODELS
-from ..questions import SURVEYS
+from ..services.survey_store import get_surveys
 
 bp = Blueprint("surveys", __name__)
 
@@ -15,9 +15,9 @@ def _survey_limit():
 
 
 def _handle_survey(survey_type):
-    spec = SURVEYS[survey_type]
+    spec = get_surveys()[survey_type]     # the questions as the admin has set them
     model = SURVEY_MODELS[survey_type]
-    form = SURVEY_FORMS[survey_type]()
+    form = survey_form(spec)
 
     if form.validate_on_submit():
         if form.website.data:
@@ -25,8 +25,11 @@ def _handle_survey(survey_type):
             current_app.logger.info("Honeypot triggered on %s survey from %s", survey_type, request.remote_addr)
             return redirect(url_for("surveys.success", survey_type=survey_type))
 
-        columns = set(model.__table__.columns.keys()) - {"id", "timestamp"}
+        columns = set(model.__table__.columns.keys()) - {"id", "timestamp", "extra_answers"}
         values = {name: (None if value == "" else value) for name, value in form.data.items() if name in columns}
+        # Rating questions an admin added from the web have no column: keep their answers as JSON.
+        extra = {q.field: form.data[q.field] for q in spec.rating_questions if q.field not in columns}
+        values["extra_answers"] = extra or None
         try:
             db.session.add(model(**values))
             db.session.commit()
@@ -57,4 +60,4 @@ def student():
 @bp.route("/success")
 def success():
     survey_type = request.args.get("survey_type")
-    return render_template("surveys/success.html", survey_type=survey_type if survey_type in SURVEYS else None)
+    return render_template("surveys/success.html", survey_type=survey_type if survey_type in get_surveys() else None)

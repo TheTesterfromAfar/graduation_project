@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf %}
+{% block title %}{{ spec.short_title }}: асуулга засах — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+
+{# A button that posts one action (move, hide/show) for one group/question. #}
+{% macro action_button(action, key, label, icon_name, direction="", disabled=false) -%}
+<form method="post" class="inline-form">
+  {{ csrf() }}
+  <input type="hidden" name="action" value="{{ action }}">
+  <input type="hidden" name="key" value="{{ key }}">
+  {% if direction %}<input type="hidden" name="direction" value="{{ direction }}">{% endif %}
+  <button type="submit" class="btn btn--secondary btn--sm"{% if disabled %} disabled{% endif %}>{{ icon(icon_name) }}<span>{{ label }}</span></button>
+</form>
+{%- endmacro %}
+
+{% block content %}
+<header class="page-header page-header--row">
+  <div>
+    <a class="back-link" href="{{ url_for('admin.questions_index') }}">{{ icon("arrow-left") }}<span>Асуулга засах</span></a>
+    <h1 class="page-title">{{ spec.short_title }} — асуулга засах</h1>
+    <p class="muted">Өөрчлөлт хадгалсан даруйдаа нийтийн маягтад хэрэгжинэ.</p>
+  </div>
+  <a class="btn btn--secondary" href="{{ url_for('surveys.' ~ survey_type) }}" target="_blank" rel="noopener">{{ icon("eye") }}<span>Маягтыг үзэх</span></a>
+</header>
+
+{# ---- title ---- #}
+<section class="card" id="title">
+  <h2 class="card__title">Судалгааны гарчиг</h2>
+  <form method="post" class="stack">
+    {{ csrf() }}
+    <input type="hidden" name="action" value="title">
+    <div class="field{% if is_draft('title') %} has-error{% endif %}">
+      <label class="field__label" for="survey-title">Гарчиг</label>
+      <input class="input" type="text" id="survey-title" name="title" maxlength="200" required value="{{ val('title', '', 'title', view.title) }}">
+    </div>
+    <div class="cluster"><button type="submit" class="btn btn--primary"><span class="btn__label">Хадгалах</span></button></div>
+  </form>
+</section>
+
+{# ---- rating groups ---- #}
+{% for group in view.groups %}
+<section class="card qgroup" id="g-{{ group.key }}">
+  <div class="card__head">
+    <h2 class="card__title">Үнэлгээний бүлэг {{ group.number }}
+      {% if not group.active %}<span class="badge badge--muted">Нуугдсан</span>{% endif %}
+    </h2>
+    <div class="cluster">
+      {{ action_button("move_group", group.key, "Дээш", "chevron-up", "up", group.first) }}
+      {{ action_button("move_group", group.key, "Доош", "chevron-down", "down", group.last) }}
+      {{ action_button("toggle_group", group.key, "Харуулах" if not group.active else "Нуух", "eye" if not group.active else "eye-off") }}
+    </div>
+  </div>
+
+  <form method="post" class="stack">
+    {{ csrf() }}
+    <input type="hidden" name="action" value="update_group">
+    <input type="hidden" name="key" value="{{ group.key }}">
+    <div class="grid grid--2{% if is_draft('update_group', group.key) %} has-error{% endif %}">
+      <div class="field">
+        <label class="field__label" for="gt-{{ group.key }}">Бүлгийн гарчиг</label>
+        <input class="input" type="text" id="gt-{{ group.key }}" name="title" maxlength="200" required value="{{ val('update_group', group.key, 'title', group.title) }}">
+      </div>
+      <div class="field">
+        <label class="field__label" for="gh-{{ group.key }}">Үнэлгээний тайлбар (заавал биш)</label>
+        <input class="input" type="text" id="gh-{{ group.key }}" name="hint" maxlength="200" value="{{ val('update_group', group.key, 'hint', group.hint) }}">
+        <p class="field__hint">Жишээ: 1 – хамгийн бага үнэлгээ, 5 – хамгийн өндөр үнэлгээ</p>
+      </div>
+    </div>
+    <div class="cluster"><button type="submit" class="btn btn--primary btn--sm"><span class="btn__label">Бүлэг хадгалах</span></button></div>
+  </form>
+
+  <h3 class="subhead">Асуултууд</h3>
+  {% for q in group.questions %}
+  <article class="qitem{% if not q.active %} is-hidden{% endif %}" id="q-{{ q.field }}">
+    <form method="post" class="stack">
+      {{ csrf() }}
+      <input type="hidden" name="action" value="update_question">
+      <input type="hidden" name="key" value="{{ q.field }}">
+      <div class="field{% if is_draft('update_question', q.field) %} has-error{% endif %}">
+        <label class="field__label" for="ql-{{ q.field }}">Асуултын текст (хариулагчид харагдана)
+          {% if not q.active %}<span class="badge badge--muted">Нуугдсан</span>{% endif %}
+        </label>
+        <textarea class="input" id="ql-{{ q.field }}" name="label" rows="2" maxlength="300" required>{{ val('update_question', q.field, 'label', q.label) }}</textarea>
+      </div>
+      <div class="field">
+        <label class="field__label" for="qs-{{ q.field }}">Товч нэр (хүснэгт, экспортод)</label>
+        <input class="input" type="text" id="qs-{{ q.field }}" name="short" maxlength="80" value="{{ val('update_question', q.field, 'short', q.short) }}">
+      </div>
+      <div class="cluster"><button type="submit" class="btn btn--primary btn--sm"><span class="btn__label">Хадгалах</span></button></div>
+    </form>
+    <div class="qitem__actions">
+      {{ action_button("move_question", q.field, "Дээш", "chevron-up", "up", q.first) }}
+      {{ action_button("move_question", q.field, "Доош", "chevron-down", "down", q.last) }}
+      {{ action_button("toggle_question", q.field, "Харуулах" if not q.active else "Нуух", "eye" if not q.active else "eye-off") }}
+    </div>
+  </article>
+  {% else %}
+  <p class="empty">Энэ бүлэгт асуулт алга. Доороос нэмнэ үү — асуулгүй бүлэг маягтад харагдахгүй.</p>
+  {% endfor %}
+
+  <details class="add-box"{% if is_draft('add_question', group.key) %} open{% endif %}>
+    <summary>{{ icon("plus") }} Энэ бүлэгт асуулт нэмэх</summary>
+    <form method="post" class="stack">
+      {{ csrf() }}
+      <input type="hidden" name="action" value="add_question">
+      <input type="hidden" name="key" value="{{ group.key }}">
+      <div class="field{% if is_draft('add_question', group.key) %} has-error{% endif %}">
+        <label class="field__label" for="nq-{{ group.key }}">Асуултын текст</label>
+        <textarea class="input" id="nq-{{ group.key }}" name="label" rows="2" maxlength="300" required>{{ val('add_question', group.key, 'label', '') }}</textarea>
+      </div>
+      <div class="field">
+        <label class="field__label" for="ns-{{ group.key }}">Товч нэр (заавал биш)</label>
+        <input class="input" type="text" id="ns-{{ group.key }}" name="short" maxlength="80" value="{{ val('add_question', group.key, 'short', '') }}">
+        <p class="field__hint">Хоосон орхивол асуултын текстээс авна. Хариулагч 1–5 оноогоор үнэлнэ.</p>
+      </div>
+      <div class="cluster"><button type="submit" class="btn btn--success btn--sm"><span class="btn__label">Асуулт нэмэх</span></button></div>
+    </form>
+  </details>
+</section>
+{% endfor %}
+
+{# ---- new group ---- #}
+<section class="card">
+  <h2 class="card__title">Шинэ бүлэг нэмэх</h2>
+  <form method="post" class="stack">
+    {{ csrf() }}
+    <input type="hidden" name="action" value="add_group">
+    <div class="grid grid--2{% if is_draft('add_group') %} has-error{% endif %}">
+      <div class="field">
+        <label class="field__label" for="ng-title">Бүлгийн гарчиг</label>
+        <input class="input" type="text" id="ng-title" name="title" maxlength="200" required value="{{ val('add_group', '', 'title', '') }}">
+      </div>
+      <div class="field">
+        <label class="field__label" for="ng-hint">Үнэлгээний тайлбар (заавал биш)</label>
+        <input class="input" type="text" id="ng-hint" name="hint" maxlength="200" value="{{ val('add_group', '', 'hint', '') }}">
+      </div>
+    </div>
+    <div class="cluster"><button type="submit" class="btn btn--success btn--sm">{{ icon("plus") }}<span class="btn__label">Бүлэг нэмэх</span></button></div>
+  </form>
+</section>
+
+{# ---- fixed questions ---- #}
+<section class="card">
+  <h2 class="card__title">Үндсэн асуултууд</h2>
+  <p class="muted">Мэдээлэл авах асуултуудын текст болон сонголтыг засна. Асуултын төрөл, заавал бөглөх эсэх, шалгалт нь хэвээр байна. Хуучин хариултууд өмнөх утгаараа хадгалагдсан хэвээр байна.</p>
+  {% for f in view.fields %}
+  <article class="qitem" id="f-{{ f.name }}">
+    <form method="post" class="stack">
+      {{ csrf() }}
+      <input type="hidden" name="action" value="update_field">
+      <input type="hidden" name="key" value="{{ f.name }}">
+      <div class="field{% if is_draft('update_field', f.name) %} has-error{% endif %}">
+        <label class="field__label" for="fl-{{ f.name }}">Асуултын текст
+          {% if f.changed %}<span class="badge badge--warning">Өөрчилсөн</span>{% endif %}
+        </label>
+        <input class="input" type="text" id="fl-{{ f.name }}" name="label" maxlength="300" required value="{{ val('update_field', f.name, 'label', f.label) }}">
+      </div>
+      {% if f.has_choices %}
+      <div class="field">
+        <label class="field__label" for="fc-{{ f.name }}">Хариултын сонголтууд (мөр бүрт нэг сонголт)</label>
+        <textarea class="input" id="fc-{{ f.name }}" name="choices" rows="{{ [f.choices|length + 1, 3]|max }}" required>{{ val('update_field', f.name, 'choices', f.choices|join('\n')) }}</textarea>
+        <p class="field__hint">
+          {% if f.protected %}Заавал байх сонголт: {{ f.protected|join(', ') }}. {% endif %}{% if f.max_len %}Нэг сонголт хамгийн ихдээ {{ [f.max_len, 100]|min }} тэмдэгт.{% endif %}
+        </p>
+      </div>
+      {% endif %}
+      <div class="cluster"><button type="submit" class="btn btn--primary btn--sm"><span class="btn__label">Хадгалах</span></button></div>
+    </form>
+  </article>
+  {% endfor %}
+</section>
+
+{# ---- reset ---- #}
+<section class="card">
+  <h2 class="card__title">Анхны байдалд нь сэргээх</h2>
+  <p class="muted">Энэ судалгааны бүх засварыг устгаж, <code>questions.py</code> дахь анхны асуултуудыг буцаана. Нэмсэн асуултын хариулт өгөгдлийн санд үлдэх боловч харагдахаа болино.</p>
+  <form method="post" data-confirm="Энэ судалгааны бүх засварыг устгаад анхны асуулгыг сэргээх үү?">
+    {{ csrf() }}
+    <input type="hidden" name="action" value="reset">
+    <button type="submit" class="btn btn--danger">{{ icon("trash") }}<span class="btn__label">Анхны байдалд нь сэргээх</span></button>
+  </form>
+</section>
+{% endblock %}

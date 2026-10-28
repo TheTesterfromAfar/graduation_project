@@ -112,6 +112,9 @@ class EmployerSurvey(db.Model):
 
     rehire_interest = db.Column(db.String(50))
 
+    # Answers to rating questions an admin added from the web: {"x_1a2b3c4d": 4, ...}
+    extra_answers = db.Column(db.JSON(none_as_null=True))
+
     def __repr__(self):
         return f"<EmployerSurvey {self.id} {self.company_name!r}>"
 
@@ -161,6 +164,9 @@ class StudentSurvey(db.Model):
     job_offer_received = db.Column(db.String(50))
     job_offer_details = db.Column(db.Text)
 
+    # Answers to rating questions an admin added from the web: {"x_1a2b3c4d": 4, ...}
+    extra_answers = db.Column(db.JSON(none_as_null=True))
+
     def __repr__(self):
         return f"<StudentSurvey {self.id} {self.major!r}>"
 
@@ -181,3 +187,17 @@ class AdminDataEntry(db.Model):
     @property
     def size(self):
         return len(self.content or "")
+
+
+class SurveyConfig(db.Model):
+    """An admin's edits to one survey's questions (see app/services/survey_config.py).
+
+    One row per survey ("employer", "student"); no row means "use the defaults in questions.py".
+    """
+
+    __tablename__ = "survey_configs"
+
+    survey_key = db.Column(db.String(20), primary_key=True)
+    data = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+    updated_by = db.Column(db.String(255))

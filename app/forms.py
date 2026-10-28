@@ -68,13 +68,33 @@ def _text(label, max_len, required=False, **kwargs):
     return StringField(label, filters=[_strip], validators=validators, **kwargs)
 
 
+BLANK_CHOICE = ("", "— Сонгоно уу —")
+
+
+def choice_list(values):
+    """Dropdown options with an explicit blank first option, so skipping a question never records the first answer."""
+    return [BLANK_CHOICE] + [(v, v) for v in values]
+
+
+class _ChoiceOf:
+    """The answer must be one of the field's *current* choices.
+
+    Read from `field.choices` at validation time (not captured when the form class is built), so
+    answer choices an admin edited are enforced as well as shown.
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+    def __call__(self, form, field):
+        if field.data not in {value for value, _label in field.choices if value != ""}:
+            raise ValidationError(self.message)
+
+
 def _select(label, values, required=False):
-    """Dropdown with an explicit blank first option, so skipping a question never records the first answer."""
-    values = tuple(values)
-    choices = [("", "— Сонгоно уу —")] + [(v, v) for v in values]
-    validators = [DataRequired(MSG_CHOICE) if required else Optional(), AnyOf(values, message=MSG_CHOICE)]
-    # validate_choice=False: AnyOf above gives a single, localised message instead of two.
-    return SelectField(label, choices=choices, default="", validate_choice=False, validators=validators)
+    validators = [DataRequired(MSG_CHOICE) if required else Optional(), _ChoiceOf(MSG_CHOICE)]
+    # validate_choice=False: _ChoiceOf above gives a single, localised message instead of two.
+    return SelectField(label, choices=choice_list(tuple(values)), default="", validate_choice=False, validators=validators)
 
 
 def _rating(label):
@@ -162,12 +182,31 @@ class StudentSurveyForm(SurveyForm):
     )
 
 
-# Rating questions are generated from the survey definitions (documented WTForms dynamic-form pattern).
-for _form, _spec in ((EmployerSurveyForm, q.EMPLOYER), (StudentSurveyForm, q.STUDENT)):
-    for _question in _spec.rating_questions:
-        setattr(_form, _question.field, _rating(_question.label))
-
 SURVEY_FORMS = {"employer": EmployerSurveyForm, "student": StudentSurveyForm}
+# The classes above hold only the fixed questions. The rating questions come from the survey's
+# current definition (questions.py + whatever an admin edited), so they are added per request:
+
+
+def survey_form(spec):
+    """A form for `spec`: the fixed questions plus one rating field per visible rating question.
+
+    `spec` is the resolved survey (see services/survey_store.get_surveys). A fresh subclass is made
+    for each request, so questions an admin adds or hides take effect immediately in every worker
+    process and nothing is shared between requests.
+    """
+    base = SURVEY_FORMS[spec.key]
+    form_class = type(base)(base.__name__, (base,), {})   # documented WTForms dynamic-form pattern
+    for question in spec.rating_questions:
+        setattr(form_class, question.field, _rating(question.label))
+
+    form = form_class()
+    for name, text in spec.field_labels:
+        if name in form:
+            form[name].label.text = text
+    for name, values in spec.choice_overrides:
+        if name in form and isinstance(form[name], SelectField):
+            form[name].choices = choice_list(values)
+    return form
 
 
 # --------------------------------------------------------------------------------------

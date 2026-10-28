@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Асуулга засах — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+{% block content %}
+<header class="page-header">
+  <a class="back-link" href="{{ url_for('admin.dashboard') }}">{{ icon("arrow-left") }}<span>Самбар руу буцах</span></a>
+  <h1 class="page-title">Судалгааны асуулга засах</h1>
+  <p class="muted">Ажил олгогч болон суралцагчийн судалгааны асуултыг эндээс өөрчилнө. Хадгалсан өөрчлөлт нийтийн маягтад тэр дор нь хэрэгжинэ.</p>
+</header>
+
+<div class="grid grid--2">
+  {% for key, spec in specs.items() %}
+  <section class="card stat-card">
+    <div class="stat-card__head">
+      <span class="survey-card__icon">{{ icon(spec.icon) }}</span>
+      <h2 class="card__title">{{ spec.short_title }}</h2>
+    </div>
+    <p>{{ spec.title }}</p>
+    <p class="muted">Харагдаж буй үнэлгээний асуулт: <strong>{{ spec.rating_questions|length }}</strong></p>
+    <div class="cluster">
+      <a class="btn btn--primary" href="{{ url_for('admin.questions_edit', survey_type=key) }}">{{ icon("edit") }}<span>Асуулт засах</span></a>
+      <a class="btn btn--secondary" href="{{ url_for('surveys.' ~ key) }}" target="_blank" rel="noopener">{{ icon("eye") }}<span>Маягтыг үзэх</span></a>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<section class="card">
+  <h2 class="card__title">Мэдэж байх зүйл</h2>
+  <ul class="stack">
+    <li>Асуултыг <strong>нуух</strong> нь устгах биш: өмнө авсан хариулт өгөгдлийн санд хэвээр хадгалагдах бөгөөд асуултыг дахин харуулахад буцаж харагдана.</li>
+    <li>Асуултын утгыг эрс өөрчилбөл өмнө авсан хариултуудтай харьцуулах боломжгүй болно. Утга нь өөр асуултыг <strong>шинээр нэмэх</strong> нь зөв.</li>
+    <li>Асуултын дугаарыг (жишээ нь «2.1.3.») асуултын текстэд өөрөө бичнэ.</li>
+    <li>Нэмсэн асуултын хариулт Excel/CSV экспорт, самбар, мэргэжлээр харах хэсэгт автоматаар орно.</li>
+  </ul>
+</section>
+{% endblock %}

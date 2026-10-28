@@ -11,7 +11,8 @@ from .cli import register_cli
 from .config import INSECURE_SECRET_KEYS, get_config
 from .extensions import csrf, db, limiter, login_manager, migrate, oauth
 from .headers import register_security_headers
-from .questions import RATING_SCALE, SURVEYS
+from .questions import RATING_SCALE
+from .services.answers import answer
 from .timeutil import format_local
 
 ERROR_PAGES = {
@@ -133,6 +134,7 @@ def _register_template_helpers(app):
     version = _static_version(app)
     # A real Jinja global (not a context-processor value) so imported macros can use it too.
     app.jinja_env.globals["rating_scale"] = RATING_SCALE
+    app.jinja_env.globals["answer"] = answer   # answer(record, field): works for columns and admin-added questions
 
     @app.template_filter("localtime")
     def localtime_filter(value, fmt="%Y-%m-%d %H:%M"):
@@ -145,5 +147,4 @@ def _register_template_helpers(app):
             "google_enabled": app.config["GOOGLE_OAUTH_ENABLED"],
             "current_year": datetime.now().year,
             "asset_version": version,
-            "survey_specs": SURVEYS,
         }

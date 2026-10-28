@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from sqlalchemy import asc, desc, or_, select
 
 from ..timeutil import local_day_start_utc
+from .answers import answer
 
 SORTS = {
     "newest": ("timestamp", "desc"),
@@ -88,6 +89,6 @@ def build_query(model, spec, filters, tz_name):
 
 def row_average(record, spec):
     """Mean of a response's 1-5 ratings (zeros/NULLs from legacy rows are ignored)."""
-    values = [getattr(record, f) for f in spec.rating_fields]
+    values = [answer(record, f) for f in spec.rating_fields]
     values = [v for v in values if v]
     return round(sum(values) / len(values), 2) if values else None

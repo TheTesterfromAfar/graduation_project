@@ -1,9 +1,17 @@
-"""Survey definitions: the single source of truth for forms, detail pages, filters and exports.
+"""Survey definitions: the DEFAULT questions for the forms, detail pages, filters and exports.
 
-Pure data - no Flask or SQLAlchemy imports. To add a rating question, append a `Question` to a
-group below (the field name must also exist as a column on the model, then run
-`flask db migrate`). The form, admin detail page, dashboard and CSV/Excel export pick it up
-automatically.
+Pure data - no Flask or SQLAlchemy imports.
+
+Admins can change these questions from the web (Админ самбар -> "Асуулга засах"). Their edits are
+stored in the database (table `survey_configs`) and layered on top of the defaults below by
+`app/services/survey_config.py`; nothing in this file is rewritten at runtime. This matters on hosts
+such as Render, where the file system is ephemeral and the app is rebuilt from GitHub on every deploy.
+
+* The defaults here are what a fresh install shows, and what "Анхны байдалд нь сэргээх" restores.
+* Once an admin has edited the rating questions of a survey, the database copy wins for that survey;
+  questions you later add to this file will not appear there until the admin resets it.
+* Questions added from the web are stored in the `extra_answers` JSON column of the response table.
+  Questions you add here in code still need a real column on the model (then `flask db migrate`).
 """
 from dataclasses import dataclass
 from typing import Tuple
@@ -53,6 +61,11 @@ class SurveySpec:
     major_field: str = ""
     # (column, label, positive answer): shown as "% of respondents who answered <positive>".
     major_highlights: Tuple[Tuple[str, str, str], ...] = ()
+    # --- admin customisations (always empty in the defaults below) -----------------------------
+    # (field, question text) for the fixed questions whose wording an admin changed.
+    field_labels: Tuple[Tuple[str, str], ...] = ()
+    # (field, answer choices) for the dropdown questions whose choices an admin changed.
+    choice_overrides: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
 
     @property
     def rating_questions(self):

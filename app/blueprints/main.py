@@ -2,14 +2,14 @@ from flask import Blueprint, jsonify, render_template
 from sqlalchemy import text
 
 from ..extensions import db
-from ..questions import SURVEYS
+from ..services.survey_store import get_surveys
 
 bp = Blueprint("main", __name__)
 
 
 @bp.route("/")
 def index():
-    return render_template("main/index.html", surveys=SURVEYS)
+    return render_template("main/index.html", surveys=get_surveys())
 
 
 @bp.route("/healthz")

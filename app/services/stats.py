@@ -15,13 +15,41 @@ def _count(model, since=None):
     return db.session.execute(stmt).scalar_one()
 
 
+def _round_average(total, n):
+    return round(total / n, 2) if n else None
+
+
 def rating_averages(model, fields):
-    """{field: average or None}. NULLIF(col, 0) drops legacy zero placeholders from the mean."""
+    """{field: average or None}. NULLIF(col, 0) drops legacy zero placeholders from the mean.
+
+    Original questions are real columns and are averaged by the database. Questions an admin added
+    from the web live in the JSON column `extra_answers` and are averaged here (a few thousand
+    rows at most for a survey like this, and the same approach services/majors.py already uses).
+    """
     if not fields:
         return {}
-    columns = [func.avg(func.nullif(getattr(model, f), 0)).label(f) for f in fields]
-    row = db.session.execute(select(*columns)).one()
-    return {f: (round(float(row[i]), 2) if row[i] is not None else None) for i, f in enumerate(fields)}
+    column_names = set(model.__table__.columns.keys())
+    in_columns = [f for f in fields if f in column_names]
+    in_json = [f for f in fields if f not in column_names]
+
+    averages = {}
+    if in_columns:
+        columns = [func.avg(func.nullif(getattr(model, f), 0)).label(f) for f in in_columns]
+        row = db.session.execute(select(*columns)).one()
+        averages.update({f: (round(float(row[i]), 2) if row[i] is not None else None) for i, f in enumerate(in_columns)})
+
+    if in_json:
+        totals = {f: [0, 0] for f in in_json}     # field -> [sum, count]
+        for stored in db.session.execute(select(model.extra_answers)).scalars():
+            if not isinstance(stored, dict):
+                continue
+            for f in in_json:
+                value = stored.get(f)
+                if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+                    totals[f][0] += value
+                    totals[f][1] += 1
+        averages.update({f: _round_average(total, n) for f, (total, n) in totals.items()})
+    return averages
 
 
 def distribution(model, field):

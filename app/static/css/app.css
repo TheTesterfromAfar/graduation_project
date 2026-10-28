@@ -370,3 +370,21 @@ a.pagination__link:hover { background: var(--accent-soft); border-color: var(--a
 .score--high { background: var(--success-soft); color: var(--success); }
 .table--matrix thead th { white-space: normal; min-width: 6.5rem; vertical-align: bottom; }
 .table--matrix thead th:first-child { min-width: 10rem; }
+
+/* ---- Survey question editor (admin) ----------------------------------------------------- */
+.badge { display: inline-block; padding: .1rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 650; background: var(--accent-soft); color: var(--brand); vertical-align: middle; }
+.badge--muted { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border-strong); }
+.badge--warning { background: var(--warning-soft); color: var(--warning); }
+
+.qitem { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: .75rem; background: var(--surface-2); }
+.qitem.is-hidden { border-style: dashed; border-color: var(--border-strong); background: var(--surface); }
+.qitem .field:last-of-type { margin-bottom: 0; }
+.qitem__actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border); }
+.qitem .btn[disabled] { opacity: .45; cursor: not-allowed; }
+.qgroup .card__head { align-items: flex-start; }
+
+.add-box { margin-top: 1rem; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: .75rem 1rem; }
+.add-box > summary { cursor: pointer; font-weight: 600; color: var(--brand); display: flex; align-items: center; gap: .4rem; }
+.add-box > summary .icon { width: 1.1em; height: 1.1em; }
+.add-box[open] > summary { margin-bottom: 1rem; }
+

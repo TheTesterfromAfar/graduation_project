@@ -11,7 +11,7 @@ admin area for reviewing, filtering and exporting the results.
 | **Validation** | Flask-WTF/WTForms with Mongolian messages; whitelisted choices, 1–5 ratings, length/format checks, honeypot field |
 | **Database** | Flask-SQLAlchemy + Flask-Migrate (Alembic). Survey tables are unchanged from the prototype |
 | **Security** | CSRF on every POST, scrypt password hashing, roles (`admin` / `analyst`), session hardening, login rate limiting, strict CSP + security headers, open-redirect protection, spreadsheet-formula-injection protection in exports |
-| **Admin** | Dashboard (totals, 7/30-day counts, average scores, answer distributions, 14-day timeline), searchable/filterable/sortable/paginated lists, response detail, CSV + Excel export that honours the active filters |
+| **Admin** | **Edit both surveys' questions from the browser**, dashboard (totals, 7/30-day counts, average scores, answer distributions, 14-day timeline), searchable/filterable/sortable/paginated lists, response detail, CSV + Excel export that honours the active filters |
 | **UI** | Dependency-free responsive CSS, mobile nav, big tap-target rating scale, live progress bar, loading spinners, dismissible alert banners, inline field errors, error pages |
 | **Production** | `.env` configuration, Gunicorn config, Dockerfile + compose file, `/healthz` endpoint |
 
@@ -23,12 +23,13 @@ app/
   __init__.py            create_app(): config, extensions, blueprints, error pages
   config.py              Development / Production / Testing configuration
   extensions.py          db, migrate, csrf, login, limiter, oauth
-  models.py              User, EmployerSurvey, StudentSurvey, AdminDataEntry
-  questions.py           survey definitions -> single source for forms, detail pages, exports
-  forms.py               WTForms (survey forms are generated from questions.py)
+  models.py              User, EmployerSurvey, StudentSurvey, AdminDataEntry, SurveyConfig
+  questions.py           DEFAULT survey definitions (admins' edits are layered on top, see below)
+  forms.py               WTForms (survey forms are built per request from the current questions)
   security.py            redirect + password-policy helpers
   blueprints/            main.py, surveys.py, auth.py, admin.py
-  services/              queries.py (search/filter), stats.py (dashboard), export.py (CSV/XLSX)
+  services/              queries.py (search/filter), stats.py (dashboard), export.py (CSV/XLSX),
+                         survey_config.py (question-editing rules, no DB), survey_store.py (loads/saves them)
   templates/ static/     UI
 migrations/              Alembic environment + versions/
 tests/                   pytest suite
@@ -97,13 +98,46 @@ See `.env.example` for every variable. The important ones:
 
 ## Changing the surveys
 
-`app/questions.py` drives the form, validation, admin detail page, dashboard and exports.
+### From the browser (admins)
 
-* **Add a rating question:** append a `Question(field, label, short)` to a group. The `field` must be
-  a column on the model (e.g. the unused `soft_1…7`, `tech_1…5`, `quality_1…2` columns on
+**Админ самбар → Асуулга засах** (admin role only). For the employer and the student survey you can:
+
+* reword any rating question, **add** new ones, **reorder** them, and **hide / show** them;
+* add, rename, reorder or hide a whole group (section) of rating questions, and edit its scale hint;
+* change the survey title;
+* reword the fixed questions (company name, phone, ...) and edit the choices of the dropdown ones
+  (aimag/city, legal form, employee count, ...);
+* **reset** a survey to the defaults in `questions.py`.
+
+Changes are saved in the database and apply to the public form immediately. Things worth knowing:
+
+* **Why the database and not `questions.py`?** On Render the file system is ephemeral and the app is
+  rebuilt from GitHub on every deploy, so a file edited at runtime would silently vanish. Edits are
+  stored in the `survey_configs` table (Neon) instead.
+* **Hiding never deletes data.** Answers to a hidden question stay in the database and reappear if it is
+  shown again. Questions are never hard-deleted from the editor.
+* **New questions are 1-5 ratings.** Their answers are stored in the `extra_answers` JSON column of the
+  response table (no schema change per question) and appear in the dashboard, response detail,
+  by-major page and CSV/Excel export like the original ones.
+* **Changing what a question means** makes old and new answers incomparable. Add a new question instead.
+* **Dropdown choices:** old responses keep the text they were saved with (and stay filterable in the admin
+  list). The answer the by-major page counts as positive (e.g. "Тийм") cannot be removed, and each choice
+  must fit the database column (e.g. gender is 20 characters).
+* Question numbers such as "2.1.3." are part of the question text; renumber them yourself when you reorder.
+* Once you edit the rating questions of a survey, the database copy wins for that survey: questions you
+  later add to `questions.py` do not appear there until you reset it.
+* A respondent who opened the form before an admin added a question will be asked to answer it on submit.
+
+### In code (developers)
+
+`app/questions.py` holds the **defaults**: what a fresh install shows and what *reset* restores.
+
+* **Add a rating question in code:** append a `Question(field, label, short)` to a group. The `field` must
+  be a column on the model (e.g. the unused `soft_1…7`, `tech_1…5`, `quality_1…2` columns on
   `StudentSurvey`), otherwise add the column to `app/models.py` and run
   `flask --app wsgi db migrate -m "add question"` then `flask --app wsgi db upgrade`.
-* **Change answer choices:** edit the tuples at the top of the file. Old responses keep their stored text.
+  (Questions added from the browser need none of this.)
+* **Change default answer choices:** edit the tuples at the top of the file.
 
 ## Results by major (мэргэжил)
 
@@ -128,7 +162,8 @@ The grouping code lives in `app/services/majors.py` and has no Flask/database im
 pytest
 ```
 
-Covers validation, CSRF, login/RBAC, open-redirect protection, search/filter/pagination, exports
+Covers validation, CSRF, login/RBAC, the question editor (`tests/test_survey_config.py` for the rules,
+`tests/test_questions_admin.py` end to end), open-redirect protection, search/filter/pagination, exports
 (including formula-injection), JSON-data management, and that the migrations build exactly the schema
 the models describe.
 
@@ -142,7 +177,8 @@ docker compose up -d --build
 docker compose exec web flask create-user you@example.com --role admin
 ```
 
-The container applies migrations on start, runs Gunicorn as a non-root user, and exposes a health
+The container applies migrations on start (this is how a deploy to Render + Neon creates the
+`survey_configs` table and the `extra_answers` columns), runs Gunicorn as a non-root user, and exposes a health
 check at `/healthz`. The SQLite file lives in the `survey_data` volume.
 
 ### Without Docker

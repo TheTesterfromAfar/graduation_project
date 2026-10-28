@@ -9,6 +9,7 @@ from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Font
 
 from ..timeutil import format_local
+from .answers import answer
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 CSV_MIME = "text/csv; charset=utf-8"
@@ -48,7 +49,7 @@ def format_cell(value, tz_name):
 def table_rows(records, columns, tz_name):
     """Yield one list of cell values per record, following `columns` = [(attribute, header), ...]."""
     for record in records:
-        yield [format_cell(getattr(record, attr), tz_name) for attr, _ in columns]
+        yield [format_cell(answer(record, attr), tz_name) for attr, _ in columns]
 
 
 def iter_csv(headers, rows):
@@ -63,7 +64,7 @@ def iter_csv(headers, rows):
         buffer.truncate(0)
         return data
 
-    writer.writerow(headers)
+    writer.writerow([neutralize(header) for header in headers])
     yield drain()
     for row in rows:
         writer.writerow([neutralize(cell) for cell in row])
@@ -77,7 +78,7 @@ def build_xlsx(headers, rows, sheet_title="Хариултууд"):
 
     header_cells = []
     for header in headers:
-        cell = WriteOnlyCell(sheet, value=header)
+        cell = WriteOnlyCell(sheet, value=neutralize(header))
         cell.font = Font(bold=True)
         header_cells.append(cell)
     sheet.append(header_cells)

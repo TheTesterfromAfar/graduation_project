@@ -11,6 +11,9 @@
   <div class="cluster">
     <a class="btn btn--primary" href="{{ url_for('admin.major_results') }}">{{ icon("chart") }}<span>Мэргэжлээр харах</span></a>
     <a class="btn btn--secondary" href="{{ url_for('admin.data_list') }}">{{ icon("database") }}<span>JSON өгөгдөл ({{ data_entry_count }})</span></a>
+    {% if current_user.is_admin %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.questions_index') }}">{{ icon("edit") }}<span>Асуулга засах</span></a>
+    {% endif %}
   </div>
 </header>
 

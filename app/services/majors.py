@@ -17,6 +17,8 @@ different text and is NOT merged - the data has to be consistent for that.
 import re
 from collections import Counter
 
+from .answers import answer
+
 _SPLIT_RE = re.compile(r"[,;\n\r]+")
 
 
@@ -89,7 +91,7 @@ def summarize(records, spec):
     rows = []
     for key, bucket in buckets.items():
         group = bucket["records"]
-        averages = {f: _average(getattr(r, f, None) for r in group) for f in spec.rating_fields}
+        averages = {f: _average(answer(r, f) for r in group) for f in spec.rating_fields}
         scored = [v for v in averages.values() if v is not None]
 
         highlights = []
