@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}JSON өгөгдөл #{{ entry.id }} — {{ site_name }}{% endblock %}
+{% block container_class %} container--wide{% endblock %}
+
+{# One spreadsheet cell: numbers right-aligned, empty stays empty, booleans as true/false. #}
+{% macro td(value) -%}
+{%- if value is none -%}<td class="is-empty"></td>
+{%- elif value is sameas true or value is sameas false -%}<td class="is-bool">{{ 'true' if value else 'false' }}</td>
+{%- elif value is number -%}<td class="is-num">{{ value }}</td>
+{%- else -%}<td>{{ value }}</td>
+{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<header class="page-header page-header--row">
+  <div>
+    <a class="back-link" href="{{ url_for('admin.data_list') }}">{{ icon("arrow-left") }}<span>Жагсаалт руу буцах</span></a>
+    <h1 class="page-title">JSON өгөгдөл #{{ entry.id }}</h1>
+    <p class="muted">{{ entry.filename or '—' }} · {{ (entry.size / 1024)|round(1) }} KB · {{ entry.timestamp|localtime }}</p>
+  </div>
+  <div class="cluster">
+    {% if not problem %}
+    <a class="btn btn--primary" href="{{ url_for('admin.data_export', entry_id=entry.id, fmt='xlsx') }}">{{ icon("download") }}<span>Excel</span></a>
+    {% endif %}
+    {% if current_user.is_admin %}
+    <a class="btn btn--secondary" href="{{ url_for('admin.data_edit', entry_id=entry.id) }}">{{ icon("edit") }}<span>JSON засах</span></a>
+    {% endif %}
+  </div>
+</header>
+
+{% if problem %}
+<p class="hint-banner">{{ problem }}</p>
+{% endif %}
+
+{% for item in shown %}
+{% set sheet = item.sheet %}
+<section class="card card--flush" id="sheet-{{ loop.index0 }}">
+  <div class="card__head sheet-head">
+    <h2 class="card__title">{% if shown|length > 1 %}{{ sheet.name }}{% else %}Хүснэгт{% endif %}</h2>
+    <div class="cluster">
+      <span class="muted">{{ sheet.rows|length }} мөр · {{ sheet.columns|length }} багана</span>
+      <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.data_export', entry_id=entry.id, fmt='csv', sheet=loop.index0) }}">{{ icon("download") }}<span>CSV</span></a>
+    </div>
+  </div>
+
+  {% if sheet.columns %}
+  <div class="sheet-wrap">
+    <table class="sheet">
+      <thead>
+        <tr>
+          <th scope="col" class="sheet__corner">№</th>
+          {% for column in sheet.columns %}<th scope="col">{{ column }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in item.rows %}
+        <tr>
+          <th scope="row" class="sheet__rownum">{{ loop.index }}</th>
+          {% for value in row %}{{ td(value) }}{% endfor %}
+        </tr>
+        {% else %}
+        <tr><td class="is-empty" colspan="{{ sheet.columns|length + 1 }}">Мөр байхгүй байна.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Энэ хүснэгт хоосон байна.</p>
+  {% endif %}
+
+  {% if item.hidden or sheet.columns_cut %}
+  <p class="note sheet-note">
+    {% if item.hidden %}Эхний {{ limit }} мөрийг харуулж байна (нийт {{ sheet.rows|length }}). Бүгдийг Excel-ээр татаж авна уу. {% endif %}
+    {% if sheet.columns_cut %}Хэт олон багана байсан тул эхний {{ sheet.columns|length }} баганыг харуулав.{% endif %}
+  </p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<details class="add-box">
+  <summary>Түүхий JSON харах</summary>
+  <pre class="raw-json">{{ raw }}</pre>
+  {% if raw_cut %}<p class="note">Эхний {{ raw|length }} тэмдэгтийг харуулав.</p>{% endif %}
+</details>
+{% endblock %}

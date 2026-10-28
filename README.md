@@ -29,6 +29,7 @@ app/
   security.py            redirect + password-policy helpers
   blueprints/            main.py, surveys.py, auth.py, admin.py
   services/              queries.py (search/filter), stats.py (dashboard), export.py (CSV/XLSX),
+                         jsontable.py (JSON -> spreadsheet sheets),
                          survey_config.py (question-editing rules, no DB), survey_store.py (loads/saves them)
   templates/ static/     UI
 migrations/              Alembic environment + versions/
@@ -155,6 +156,15 @@ Changes are saved in the database and apply to the public form immediately. Thin
 
 Existing databases need the new column: `flask --app wsgi db upgrade` (Docker applies it on start).
 The grouping code lives in `app/services/majors.py` and has no Flask/database imports.
+
+## Admin JSON data as a spreadsheet
+
+Every JSON document in **JSON өгөгдөл** opens as a spreadsheet (`/admin/data/<id>`), including right after you
+add one. A list of objects becomes one row per object with a column per key; `{"Sheet1": [...], "Sheet2": [...]}`
+becomes one sheet per key; a list of lists becomes a plain grid (columns A, B, C...). Nested values appear as JSON
+text in their cell. The browser shows the first 1000 rows of each sheet; **Excel** (all sheets) and **CSV** (one
+sheet) downloads always contain every row. Editing is still done on the raw JSON. The conversion rules live in
+`app/services/jsontable.py` (no Flask/database imports).
 
 ## Tests
 

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from openpyxl import Workbook
 from openpyxl.cell import WriteOnlyCell
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font
 
 from ..timeutil import format_local
@@ -85,6 +86,55 @@ def build_xlsx(headers, rows, sheet_title="Хариултууд"):
 
     for row in rows:
         sheet.append([neutralize(cell) for cell in row])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return output
+
+
+# --------------------------------------------------------------------------------------
+# Workbook with several sheets (the admin's JSON data shown as a spreadsheet)
+# --------------------------------------------------------------------------------------
+EXCEL_MAX_CELL = 32767                     # Excel's limit on the text in one cell
+_SHEET_NAME_BAD = re.compile(r"[\[\]:*?/\\]")
+
+
+def _excel_cell(value):
+    """Safe to hand to openpyxl: no control characters (openpyxl raises on them), no formulas."""
+    if isinstance(value, str):
+        return neutralize(ILLEGAL_CHARACTERS_RE.sub("", value))[:EXCEL_MAX_CELL]
+    return value
+
+
+def sheet_titles(names):
+    """Excel-legal, unique worksheet names (max 31 characters, none of []:*?/\\, not empty)."""
+    used, titles = set(), []
+    for name in names:
+        base = _SHEET_NAME_BAD.sub("_", ILLEGAL_CHARACTERS_RE.sub("", str(name))).strip("' ")[:31] or "Sheet"
+        title, n = base, 2
+        while title.casefold() in used:
+            suffix = f" ({n})"
+            title, n = base[: 31 - len(suffix)] + suffix, n + 1
+        used.add(title.casefold())
+        titles.append(title)
+    return titles
+
+
+def build_workbook(sheets):
+    """`sheets` = [(name, headers, rows), ...] -> an .xlsx file (BytesIO) with one worksheet each."""
+    workbook = Workbook(write_only=True)
+    for title, (_, headers, rows) in zip(sheet_titles([name for name, _, _ in sheets]), sheets):
+        sheet = workbook.create_sheet(title=title)
+        sheet.freeze_panes = "A2"
+        header_cells = []
+        for header in headers:
+            header_cell = WriteOnlyCell(sheet, value=_excel_cell(header))
+            header_cell.font = Font(bold=True)
+            header_cells.append(header_cell)
+        sheet.append(header_cells)
+        for row in rows:
+            sheet.append([_excel_cell(cell) for cell in row])
 
     output = io.BytesIO()
     workbook.save(output)

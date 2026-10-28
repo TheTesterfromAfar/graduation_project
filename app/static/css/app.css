@@ -388,3 +388,19 @@ a.pagination__link:hover { background: var(--accent-soft); border-color: var(--a
 .add-box > summary .icon { width: 1.1em; height: 1.1em; }
 .add-box[open] > summary { margin-bottom: 1rem; }
 
+/* ---- JSON data shown as a spreadsheet ---------------------------------------------------- */
+/* Unlike .table, this never turns into stacked cards on phones: it is a grid, so it scrolls. */
+.sheet-head { padding: 1rem 1.25rem 0; }
+.sheet-wrap { overflow: auto; max-height: 70vh; border-top: 1px solid var(--border); -webkit-overflow-scrolling: touch; }
+.sheet { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: .9rem; }
+.sheet th, .sheet td { padding: .4rem .7rem; text-align: left; vertical-align: top; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); max-width: 26rem; overflow-wrap: anywhere; }
+.sheet thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text); font-weight: 650; white-space: nowrap; }
+.sheet__rownum, .sheet__corner { position: sticky; left: 0; background: var(--surface-2); color: var(--muted); font-weight: 600; text-align: right !important; min-width: 3rem; }
+.sheet__corner { z-index: 3; }
+.sheet__rownum { z-index: 1; }
+.sheet tbody tr:nth-child(even) td { background: #fafcfd; }
+.sheet tbody tr:hover td { background: var(--accent-soft); }
+.sheet td.is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.sheet td.is-bool { color: var(--muted); font-style: italic; }
+.sheet-note { padding: 0 1.25rem 1rem; margin: .75rem 0 0; }
+.raw-json { margin: 0; max-height: 24rem; overflow: auto; padding: 1rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--mono); font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }

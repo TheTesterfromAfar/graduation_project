@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from flask import (Blueprint, Response, abort, current_app, flash, redirect, render_template, request,
@@ -11,7 +12,7 @@ from ..extensions import db
 from ..forms import AdminDataEditForm, AdminDataForm
 from ..models import ROLE_ADMIN, ROLES, SURVEY_MODELS, AdminDataEntry
 from ..questions import SURVEYS
-from ..services import export, majors, queries, stats, survey_config, survey_store
+from ..services import export, jsontable, majors, queries, stats, survey_config, survey_store
 from ..services.survey_store import get_surveys
 
 bp = Blueprint("admin", __name__)
@@ -221,15 +222,63 @@ def data_list():
     return render_template("admin/data.html", entries=entries, form=AdminDataForm())
 
 
+SHEET_ROWS_SHOWN = 1000     # rows drawn in the browser per sheet; the downloads always hold every row
+RAW_JSON_SHOWN = 100_000    # characters of raw JSON offered under "Түүхий JSON"
+
+
+@bp.route("/data/<int:entry_id>")
+def data_view(entry_id):
+    """One stored JSON document shown as a spreadsheet (see services/jsontable.py for the rules)."""
+    entry = db.get_or_404(AdminDataEntry, entry_id)
+    try:
+        sheets = jsontable.parse(entry.content)
+        problem = None
+        raw = json.dumps(json.loads(entry.content), ensure_ascii=False, indent=2)
+    except (ValueError, RecursionError):
+        sheets, problem, raw = [], "Энэ өгөгдлийг хүснэгт болгон харуулах боломжгүй байна.", entry.content
+
+    shown = [{"sheet": sheet, "rows": sheet.rows[:SHEET_ROWS_SHOWN], "hidden": max(0, len(sheet.rows) - SHEET_ROWS_SHOWN)}
+             for sheet in sheets]
+    return render_template("admin/data_view.html", entry=entry, shown=shown, problem=problem, limit=SHEET_ROWS_SHOWN,
+                           raw=raw[:RAW_JSON_SHOWN], raw_cut=len(raw) > RAW_JSON_SHOWN)
+
+
+@bp.route("/data/<int:entry_id>/export/<fmt>")
+def data_export(entry_id, fmt):
+    """Download a stored JSON document as Excel (every sheet) or CSV (one sheet, ?sheet=0,1,...)."""
+    if fmt not in ("csv", "xlsx"):
+        abort(404)
+    entry = db.get_or_404(AdminDataEntry, entry_id)
+    try:
+        sheets = jsontable.parse(entry.content)
+    except (ValueError, RecursionError):
+        flash("Энэ өгөгдлийг хүснэгт болгон татах боломжгүй байна.", "danger")
+        return redirect(url_for("admin.data_view", entry_id=entry.id))
+
+    filename = f"json_data_{entry.id}.{fmt}"
+    current_app.logger.info("%s exported JSON data #%s as %s", current_user.email, entry.id, fmt)
+    if fmt == "xlsx":
+        workbook = export.build_workbook([(sheet.name, sheet.columns, sheet.rows) for sheet in sheets])
+        return send_file(workbook, mimetype=export.XLSX_MIME, as_attachment=True, download_name=filename)
+
+    index = request.args.get("sheet", 0, type=int)
+    if not 0 <= index < len(sheets):
+        abort(404)
+    sheet = sheets[index]
+    return Response(export.iter_csv(sheet.columns, sheet.rows), mimetype=export.CSV_MIME,
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
 @bp.route("/data/add", methods=["POST"])
 @roles_required(ROLE_ADMIN)
 def data_add():
     form = AdminDataForm()
     if form.validate_on_submit():
-        db.session.add(AdminDataEntry(filename=form.filename, content=form.content))
+        entry = AdminDataEntry(filename=form.filename, content=form.content)
+        db.session.add(entry)
         db.session.commit()
         flash("Өгөгдөл амжилттай нэмэгдлээ.", "success")
-        return redirect(url_for("admin.data_list"))
+        return redirect(url_for("admin.data_view", entry_id=entry.id))   # show it as a spreadsheet
 
     flash("Өгөгдөл хадгалагдсангүй. Доорх алдааг засна уу.", "danger")
     entries = db.session.execute(select(AdminDataEntry).order_by(AdminDataEntry.timestamp.desc())).scalars().all()
@@ -245,7 +294,7 @@ def data_edit(entry_id):
         entry.content = form.content.data
         db.session.commit()
         flash("Өгөгдөл амжилттай шинэчлэгдлээ.", "success")
-        return redirect(url_for("admin.data_list"))
+        return redirect(url_for("admin.data_view", entry_id=entry.id))
     return render_template("admin/data_edit.html", entry=entry, form=form)
 
 

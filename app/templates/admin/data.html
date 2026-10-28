@@ -6,7 +6,7 @@
 <header class="page-header">
   <a class="back-link" href="{{ url_for('admin.dashboard') }}">{{ icon("arrow-left") }}<span>Самбар руу буцах</span></a>
   <h1 class="page-title">JSON өгөгдөл</h1>
-  <p class="muted">Админы оруулсан JSON файл, текст өгөгдлүүд.</p>
+  <p class="muted">Админы оруулсан JSON файл, текст өгөгдлүүд. Дарж хүснэгт хэлбэрээр харна.</p>
 </header>
 
 {% if current_user.is_admin %}
@@ -32,10 +32,11 @@
         {% for entry in entries %}
         <tr>
           <td data-label="ID">{{ entry.id }}</td>
-          <td data-label="Файлын нэр">{{ entry.filename or '—' }}</td>
+          <td data-label="Файлын нэр"><a href="{{ url_for('admin.data_view', entry_id=entry.id) }}">{{ entry.filename or '—' }}</a></td>
           <td data-label="Хэмжээ">{{ (entry.size / 1024)|round(1) }} KB</td>
           <td data-label="Огноо">{{ entry.timestamp|localtime }}</td>
           <td class="table__actions">
+            <a class="btn btn--primary btn--sm" href="{{ url_for('admin.data_view', entry_id=entry.id) }}">{{ icon("eye") }}<span>Хүснэгтээр</span></a>
             {% if current_user.is_admin %}
               <a class="btn btn--secondary btn--sm" href="{{ url_for('admin.data_edit', entry_id=entry.id) }}">{{ icon("edit") }}<span>Засах</span></a>
               <form method="post" action="{{ url_for('admin.data_delete', entry_id=entry.id) }}" class="inline-form" data-confirm="Энэ өгөгдлийг устгахдаа итгэлтэй байна уу?">
